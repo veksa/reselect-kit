@@ -1,5 +1,5 @@
 import { expectTypeOf } from 'expect-type';
-import { ICacheObject } from '../src/_reReselect';
+import { ICacheObject } from '@veksa/re-reselect';
 import { TreeCache, IntervalMapCache, initGarbageCollector } from '../src/index';
 
 // both cache implementations satisfy the re-reselect cache contract

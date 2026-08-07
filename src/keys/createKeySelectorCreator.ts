@@ -1,4 +1,4 @@
-import { KeySelector } from '../_reReselect';
+import { KeySelector } from '@veksa/re-reselect';
 import { isPropSelector } from '../createPropSelector';
 import { isComposedKeySelector, KeySelectorComposer } from './createKeySelectorComposer';
 import { arePathsEqual } from '../_helpers/arePathsEqual';

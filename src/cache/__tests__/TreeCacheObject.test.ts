@@ -1,4 +1,4 @@
-import { FlatMapCache, createCachedSelector } from '../../_reReselect';
+import { FlatMapCache, createCachedSelector } from '@veksa/re-reselect';
 import { IntervalMapCache } from '../intervalMapCache';
 import { TreeCache } from '../TreeCache';
 

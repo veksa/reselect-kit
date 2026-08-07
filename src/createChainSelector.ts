@@ -1,5 +1,5 @@
 import { createSelectorCreator, Selector } from '@veksa/reselect';
-import { createCachedSelector, ICacheObject, KeySelector } from './_reReselect';
+import { createCachedSelector, ICacheObject, KeySelector } from '@veksa/re-reselect';
 import { KeySelectorComposer } from './keys/createKeySelectorComposer';
 import { isCachedSelector } from './_helpers/isCachedSelector';
 import { defaultKeySelector } from './keys/defaultKeySelector';

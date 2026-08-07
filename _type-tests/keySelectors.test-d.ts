@@ -1,5 +1,5 @@
 import { expectTypeOf } from 'expect-type';
-import { KeySelector } from '../src/_reReselect';
+import { KeySelector } from '@veksa/re-reselect';
 import {
   defaultKeySelector,
   stringComposeKeySelectors,

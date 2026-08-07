@@ -1,5 +1,5 @@
 import { Selector, SelectorArray } from '@veksa/reselect';
-import { OutputCachedSelector } from './_reReselect';
+import { OutputCachedSelector } from '@veksa/re-reselect';
 
 /**
  * A selector carrying optional debug metadata. In the unified model a

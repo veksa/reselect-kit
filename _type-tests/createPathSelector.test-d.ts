@@ -1,5 +1,5 @@
 import { expectTypeOf } from 'expect-type';
-import { createCachedSelector } from '../src/_reReselect';
+import { createCachedSelector } from '@veksa/re-reselect';
 import { createPathSelector } from '../src/index';
 import { PersonProps, State } from './models';
 

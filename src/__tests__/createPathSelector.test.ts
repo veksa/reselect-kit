@@ -1,4 +1,4 @@
-import { createCachedSelector } from '../_reReselect';
+import { createCachedSelector } from '@veksa/re-reselect';
 import { createPathSelector } from '../createPathSelector';
 import { commonState, Document, State } from '../__data__/state';
 import { isCachedSelector } from '../_helpers/isCachedSelector';

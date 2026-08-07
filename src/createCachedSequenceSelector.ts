@@ -1,5 +1,5 @@
 import { createSelector, Selector } from '@veksa/reselect';
-import { createCachedSelector, PolymorphicCachedOptions } from './_reReselect';
+import { createCachedSelector, PolymorphicCachedOptions } from '@veksa/re-reselect';
 import { createSequenceSelector } from './createSequenceSelector';
 
 export function createCachedSequenceSelector<S, R>(

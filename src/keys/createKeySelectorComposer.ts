@@ -1,4 +1,4 @@
-import { KeySelector } from '../_reReselect';
+import { KeySelector } from '@veksa/re-reselect';
 import { UnionToIntersection } from '../types';
 
 export const composedKeySelectorSymbol = Symbol.for('ComposedKeySelector');

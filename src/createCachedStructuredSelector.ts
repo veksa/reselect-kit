@@ -1,5 +1,5 @@
 import { createSelector, Selector, SelectorResultsMap, SelectorsObject } from '@veksa/reselect';
-import { createCachedSelector, PolymorphicCachedOptions } from './_reReselect';
+import { createCachedSelector, PolymorphicCachedOptions } from '@veksa/re-reselect';
 import { createStructuredSelector } from './createStructuredSelector';
 import { UnionToIntersection } from './types';
 

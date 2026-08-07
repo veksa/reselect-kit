@@ -1,4 +1,4 @@
-import { FlatObjectCache, ICacheObject } from '../_reReselect';
+import { FlatObjectCache, ICacheObject } from '@veksa/re-reselect';
 
 export type TreeCacheObjectOptions = {
   cacheObjectCreator?: () => ICacheObject;

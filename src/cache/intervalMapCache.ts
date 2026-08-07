@@ -1,4 +1,4 @@
-import { ICacheObject } from '../_reReselect';
+import { ICacheObject } from '@veksa/re-reselect';
 
 interface CacheEntry {
   data: unknown;

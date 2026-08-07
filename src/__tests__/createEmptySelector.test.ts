@@ -1,4 +1,4 @@
-import { createCachedSelector } from '../_reReselect';
+import { createCachedSelector } from '@veksa/re-reselect';
 import { createChainSelector } from '../createChainSelector';
 import { createBoundSelector } from '../createBoundSelector';
 import { createEmptySelector } from '../createEmptySelector';

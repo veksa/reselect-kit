@@ -1,4 +1,4 @@
-import { createCachedSelector } from '../_reReselect';
+import { createCachedSelector } from '@veksa/re-reselect';
 import { commonState, State } from '../__data__/state';
 import { createAdaptedSelector } from '../createAdaptedSelector';
 import { createStructuredSelector } from '../createStructuredSelector';
