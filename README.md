@@ -1,10 +1,18 @@
-# @veksa/reselect-utils
+# reselect-kit
 
-[![npm version](https://img.shields.io/npm/v/@veksa/reselect-utils.svg?style=flat-square)](https://www.npmjs.com/package/@veksa/reselect-utils)
-[![npm downloads](https://img.shields.io/npm/dm/@veksa/reselect-utils.svg?style=flat-square)](https://www.npmjs.com/package/@veksa/reselect-utils)
+[![npm version](https://img.shields.io/npm/v/reselect-kit.svg?style=flat-square)](https://www.npmjs.com/package/reselect-kit)
+[![npm downloads](https://img.shields.io/npm/dm/reselect-kit.svg?style=flat-square)](https://www.npmjs.com/package/reselect-kit)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE.md)
 
 A powerful toolkit that extends the capabilities of @veksa/reselect and @veksa/re-reselect by providing utilities for advanced selector composition, safe property access, and optimized caching. This library helps you build more maintainable and efficient Redux selectors with enhanced type safety and functional programming patterns.
+
+> **About this package**
+>
+> `reselect-kit` continues [sgrishchenko/reselect-utils](https://github.com/sgrishchenko/reselect-utils),
+> keeping its full commit history. That project is no longer maintained, so the
+> work moved here under a new name rather than staying on a fork of a dormant
+> repository. The API is the same — only the package name changed, from
+> `@veksa/reselect-utils` to `reselect-kit`.
 
 ## Features
 
@@ -19,21 +27,21 @@ A powerful toolkit that extends the capabilities of @veksa/reselect and @veksa/r
 
 ## Installation
 
-@veksa/reselect-utils requires **TypeScript 5.8 or later**.
+reselect-kit requires **TypeScript 5.8 or later**.
 
 ### Using npm or yarn
 
 ```bash
 # npm
-npm install @veksa/reselect-utils
+npm install reselect-kit
 
 # yarn
-yarn add @veksa/reselect-utils
+yarn add reselect-kit
 ```
 
 ## Examples
 
-### Comparing @veksa/reselect, @veksa/re-reselect, and @veksa/reselect-utils
+### Comparing @veksa/reselect, @veksa/re-reselect, and reselect-kit
 
 #### Problem: Working with optional nested data
 
@@ -84,10 +92,10 @@ const address = getUserAddressByUserId(state, '123');
 
 @veksa/re-reselect adds caching benefits but still requires the same null checks for property access.
 
-#### @veksa/reselect-utils solution
+#### reselect-kit solution
 
 ```typescript
-import { createPathSelector } from '@veksa/reselect-utils';
+import { createPathSelector } from 'reselect-kit';
 
 // Clean path selection with built-in null handling
 const getUser = createPathSelector((state) => state.user);
@@ -100,14 +108,14 @@ const address = getUser(state).address(); // Safely returns undefined if path is
 const userAddress = getUserByUserId(state, '123').address(); // With parameters
 ```
 
-@veksa/reselect-utils provides safer property access with path selectors that handle null/undefined values automatically.
+reselect-kit provides safer property access with path selectors that handle null/undefined values automatically.
 
 ### Basic Usage Patterns
 
 #### Segment Selector
 
 ```typescript
-import { createSegmentSelector } from '@veksa/reselect-utils';
+import { createSegmentSelector } from 'reselect-kit';
 
 interface IUserStore {
   address: string;
@@ -128,7 +136,7 @@ const getUserSegment = createSegmentSelector<IUserSegment, IUserStore>(
 #### Path Selector
 
 ```typescript
-import { createPathSelector } from '@veksa/reselect-utils';
+import { createPathSelector } from 'reselect-kit';
 
 const state = {
   user: {
@@ -142,7 +150,7 @@ const getUserAddress = createPathSelector((state) => state.user).address();
 #### Prop Selector
 
 ```typescript
-import { createPropSelector } from '@veksa/reselect-utils';
+import { createPropSelector } from 'reselect-kit';
 
 const getUserIdFromProps = createPropSelector<{ userId: number }>().userId();
 ```
@@ -151,7 +159,7 @@ const getUserIdFromProps = createPropSelector<{ userId: number }>().userId();
 
 ```typescript
 import { createSelector } from '@veksa/reselect';
-import { createBoundSelector } from '@veksa/reselect-utils';
+import { createBoundSelector } from 'reselect-kit';
 
 const getUserByName = createSelector(
   (state) => state.users,
@@ -169,7 +177,7 @@ const admin = getAdmin(state); // Same as getUserByName(state, {userName: 'admin
 
 ```typescript
 import { createSelector } from '@veksa/reselect';
-import { createAdaptedSelector } from '@veksa/reselect-utils';
+import { createAdaptedSelector } from 'reselect-kit';
 
 const getUserByNameAndRole = createSelector(
   (state) => state.users,
@@ -190,7 +198,7 @@ const admin = getAdmin(state); // Same as getUserByName(state, {userName: 'admin
 #### Chain Selectors
 
 ```typescript
-import { createChainSelector } from '@veksa/reselect-utils';
+import { createChainSelector } from 'reselect-kit';
 
 // Create a base selector
 const getUserData = (state) => state.users;
@@ -210,7 +218,7 @@ const activeEmails = getActiveUserEmails(state); // ['alice@example.com', 'bob@e
 ### Using Structured Selectors
 
 ```typescript
-import { createCachedStructuredSelector } from '@veksa/reselect-utils';
+import { createCachedStructuredSelector } from 'reselect-kit';
 
 const getUserProfile = createCachedStructuredSelector({
   name: (state) => state.user.name,
@@ -229,7 +237,7 @@ const profile = getUserProfile(state, '123');
 ### Key Selector Composition
 
 ```typescript
-import { stringComposeKeySelectors } from '@veksa/reselect-utils';
+import { stringComposeKeySelectors } from 'reselect-kit';
 
 // Compose several key selectors into a single one. `stringComposeKeySelectors`
 // joins the composed keys with `:`.
@@ -411,7 +419,7 @@ const getUserStats = createSequenceSelector([
 Implements a hierarchical cache structure for nested key support. Unlike flat cache objects, TreeCache allows for efficiently caching and retrieving selectors with complex, multi-part keys.
 
 ```typescript
-import { TreeCache } from '@veksa/reselect-utils';
+import { TreeCache } from 'reselect-kit';
 
 // Create a TreeCache instance
 const cache = new TreeCache({
@@ -429,7 +437,7 @@ const selector = cache.get(complexKey);
 A time-based cache implementation with automatic garbage collection for unused selectors to prevent memory leaks.
 
 ```typescript
-import { IntervalMapCache, initGarbageCollector } from '@veksa/reselect-utils';
+import { IntervalMapCache, initGarbageCollector } from 'reselect-kit';
 
 // Initialize garbage collector to clean up stale cache entries
 initGarbageCollector();
@@ -443,18 +451,18 @@ cache.set('key', selectorData);
 
 ### Comparing with @veksa/reselect and @veksa/re-reselect
 
-| Feature                     | @veksa/reselect | @veksa/re-reselect | @veksa/reselect-utils |
-| --------------------------- | --------------- | ------------------ | --------------------- |
-| Basic memoization           | ✓               | ✓                  | ✓ (via dependencies)  |
-| Parametric memoization      | ×               | ✓                  | ✓ (via dependencies)  |
-| Safe nested property access | ×               | ×                  | ✓                     |
-| Fluent selector chains      | ×               | ×                  | ✓                     |
-| Parameter binding           | ×               | ×                  | ✓                     |
-| Parameter adaptation        | ×               | ×                  | ✓                     |
-| Advanced key composition    | ×               | Limited            | ✓                     |
-| Cache garbage collection    | ×               | ×                  | ✓                     |
-| Hierarchical caching        | ×               | ×                  | ✓                     |
-| Typescript support          | ✓               | ✓                  | ✓ (enhanced)          |
+| Feature                     | @veksa/reselect | @veksa/re-reselect | reselect-kit         |
+| --------------------------- | --------------- | ------------------ | -------------------- |
+| Basic memoization           | ✓               | ✓                  | ✓ (via dependencies) |
+| Parametric memoization      | ×               | ✓                  | ✓ (via dependencies) |
+| Safe nested property access | ×               | ×                  | ✓                    |
+| Fluent selector chains      | ×               | ×                  | ✓                    |
+| Parameter binding           | ×               | ×                  | ✓                    |
+| Parameter adaptation        | ×               | ×                  | ✓                    |
+| Advanced key composition    | ×               | Limited            | ✓                    |
+| Cache garbage collection    | ×               | ×                  | ✓                    |
+| Hierarchical caching        | ×               | ×                  | ✓                    |
+| Typescript support          | ✓               | ✓                  | ✓ (enhanced)         |
 
 ## Contributing
 

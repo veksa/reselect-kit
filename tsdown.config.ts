@@ -7,15 +7,15 @@ async function writeCommonJSEntry() {
     path.join('dist/cjs/', 'index.js'),
     `'use strict'
 if (process.env.NODE_ENV === 'production') {
-  module.exports = require('./reselectUtils.production.min.cjs')
+  module.exports = require('./reselectKit.production.min.cjs')
 } else {
-  module.exports = require('./reselectUtils.development.cjs')
+  module.exports = require('./reselectKit.development.cjs')
 }`,
   );
 }
 
 const commonOptions = {
-  entry: { reselectUtils: 'src/index.ts' },
+  entry: { reselectKit: 'src/index.ts' },
   sourcemap: true,
   target: 'esnext',
   unbundle: false,
@@ -35,7 +35,7 @@ export default defineConfig([
   {
     ...commonOptions,
     name: 'CJS Development',
-    entry: { 'reselectUtils.development': 'src/index.ts' },
+    entry: { 'reselectKit.development': 'src/index.ts' },
     env: { NODE_ENV: 'development' },
     format: 'cjs',
     outDir: './dist/cjs/',
@@ -45,7 +45,7 @@ export default defineConfig([
   {
     ...commonOptions,
     name: 'CJS Production',
-    entry: { 'reselectUtils.production.min': 'src/index.ts' },
+    entry: { 'reselectKit.production.min': 'src/index.ts' },
     env: { NODE_ENV: 'production' },
     format: 'cjs',
     outDir: './dist/cjs/',
