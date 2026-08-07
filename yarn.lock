@@ -1124,9 +1124,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@veksa/react-redux@npm:^9.3.1":
-  version: 9.3.1
-  resolution: "@veksa/react-redux@npm:9.3.1"
+"@veksa/react-redux@npm:^9.3.2":
+  version: 9.3.2
+  resolution: "@veksa/react-redux@npm:9.3.2"
   peerDependencies:
     "@types/react": ^18.2.25 || ^19
     react: ^18.0 || ^19
@@ -1136,7 +1136,7 @@ __metadata:
       optional: true
     redux:
       optional: true
-  checksum: 10/cd35bb76ac063ffe27a7d8a92d8ebf52110be7f02e75c290f55ca4692aa5f7c024acfb5f3a56cb3aad618be28b3bdab22a3bae0087f2999104d5de88de4337af
+  checksum: 10/70ef29bce247706a0d65f7f830652903648da755e34288c81834d87a806dcec9029469e23adae4d30df1e16eba1b5b4d0a4bfa24dd123d902b64e52980414100
   languageName: node
   linkType: hard
 
@@ -3170,7 +3170,7 @@ __metadata:
     "@types/react": "npm:^19.0.12"
     "@types/react-dom": "npm:^19.0.4"
     "@veksa/re-reselect": "npm:^5.1.3"
-    "@veksa/react-redux": "npm:^9.3.1"
+    "@veksa/react-redux": "npm:^9.3.2"
     "@veksa/reselect": "npm:^5.2.1"
     "@vitest/coverage-v8": "npm:^4.1.10"
     expect-type: "npm:^1.2.1"
@@ -3189,7 +3189,7 @@ __metadata:
     vitest: "npm:^4.1.10"
   peerDependencies:
     "@veksa/re-reselect": ^5.1.3
-    "@veksa/react-redux": ^9.3.1
+    "@veksa/react-redux": ^9.3.2
     "@veksa/reselect": ^5.2.1
     react: ^19.0.0
     react-dom: ^19.0.0
