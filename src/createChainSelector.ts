@@ -159,6 +159,14 @@ export function createChainSelector(
       combinedSelector.cache = (higherOrderSelector as unknown as { cache: ICacheObject }).cache;
     }
 
+    /**
+     * Assigned through a local and written to the selector once. Assigning the
+     * property in both branches instead reads as two expando declarations of
+     * `keySelector` to TypeScript before 7, which rejects it as a duplicate
+     * identifier.
+     */
+    let levelKeySelector: KeySelector<any>;
+
     if (isDerivedKeyless) {
       /**
        * A `map` level derives a plain `() => output`, never a cached selector, so
@@ -166,17 +174,10 @@ export function createChainSelector(
        * known at build time. It is the same call the wrapper below makes, minus
        * the derived selector — so the key is composed exactly as before, once,
        * instead of on every key computation of every level above.
-       *
-       * When nothing keyed is left the composition yields the default key, and
-       * leaving the property off is what lets the next level skip its cache too.
        */
-      const mapKeySelector = keySelectorCreator({
+      levelKeySelector = keySelectorCreator({
         inputSelectors: [higherOrderSelector],
       }) as KeySelector<any>;
-
-      if (mapKeySelector !== defaultKeySelector) {
-        combinedSelector.keySelector = mapKeySelector;
-      }
     } else {
       /**
        * The derived selector's key selector, memoized on the derived selector itself.
@@ -195,7 +196,7 @@ export function createChainSelector(
        */
       const derivedKeySelectors = new WeakMap<object, KeySelector<any>>();
 
-      combinedSelector.keySelector = (state: any, props: any) => {
+      levelKeySelector = (state: any, props: any) => {
         const derivedSelector: any = (higherOrderSelector as any)(state, props);
 
         let derivedKeySelector = derivedKeySelectors.get(derivedSelector);
@@ -210,6 +211,16 @@ export function createChainSelector(
 
         return (derivedKeySelector as any)(state, props);
       };
+    }
+
+    /**
+     * When nothing keyed is left the composition yields the default key, and
+     * leaving the property off is what lets the next level skip its cache too.
+     * The wrapper above is a fresh closure, so only a `map` level can land here
+     * with the default.
+     */
+    if (levelKeySelector !== defaultKeySelector) {
+      combinedSelector.keySelector = levelKeySelector;
     }
 
     withDebugName(combinedSelector, () => {
