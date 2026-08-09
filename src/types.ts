@@ -76,14 +76,22 @@ type RequiredPropsOf<S> = S extends AnySelector
  * which is why it needs a pattern of its own; `undefined` is what the optional
  * marker contributes and is dropped, so that intersecting the props of the
  * group does not collapse to `never`.
+ *
+ * A selector that leaves its arguments open — `Selector<State, Result>` is
+ * `(state, ...args: any[]) => Result` — declares no props at all and must
+ * contribute nothing, or its `any` would swallow the props of every other
+ * selector in the group. It is told apart by the length of what follows
+ * `state`: an optional argument gives a finite `0 | 1`, a rest gives `number`.
  */
 type OptionalPropsOf<S> = S extends AnySelector
   ? Parameters<S> extends [any, any, ...any[]]
     ? never
     : Parameters<S> extends [any, ...infer Rest]
-      ? Rest extends readonly []
+      ? number extends Rest['length']
         ? never
-        : Exclude<Rest[0], undefined>
+        : Rest extends readonly []
+          ? never
+          : Exclude<Rest[0], undefined>
       : never
   : never;
 
