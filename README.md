@@ -350,6 +350,20 @@ Transforms the output of the selector with a simple transformation function. Unl
 map<R2>(fn: (result: R1) => R2, options?: ChainSelectorOptions): SelectorMonad
 ```
 
+###### Keyed levels
+
+A level only gets a keyed cache when its key can actually vary. Chaining off a
+plain (uncached) selector gives every level the default key, so the cache would
+hold a single entry for the lifetime of the chain while every call still paid
+for the key computation and the lookup guarding it — those levels are built as
+plain memoized selectors instead, and the resulting selector carries no
+`keySelector` or `cache`. Chaining off a cached selector keeps the keyed caches,
+since the key is what makes them earn their keep.
+
+A `map` level never derives a cached selector, so its key is always the base's
+own and is propagated as is rather than recomposed per level. Only `chain` has
+to inspect the derived selector to compose the level's key.
+
 ###### build
 
 Completes the chain and returns the final selector function that can be used in components.

@@ -1,14 +1,16 @@
-import { createSelector, setGlobalDevModeChecks } from '@veksa/reselect';
+import { createSelector, createSelectorCreator, setGlobalDevModeChecks } from '@veksa/reselect';
 import { createCachedSelector } from '@veksa/re-reselect';
-import { createChainSelector } from '../createChainSelector';
+import { createChainSelector, CreateSelectorOptions } from '../createChainSelector';
 import { createBoundSelector } from '../createBoundSelector';
 import { commonState, MessageStateSegment, PersonStateSegment, State } from '../__data__/state';
 import { createPathSelector } from '../createPathSelector';
 import { createPropSelector } from '../createPropSelector';
 import { createKeySelectorCreator } from '../keys/createKeySelectorCreator';
 import { stringComposeKeySelectors } from '../keys/stringComposeKeySelectors';
+import { arrayComposeKeySelectors } from '../keys/arrayComposeKeySelectors';
 import { createSequenceSelector } from '../createSequenceSelector';
-import { NamedParametricSelector, NamedSelector } from '../types';
+import { CachedSelector, NamedParametricSelector, NamedSelector } from '../types';
+import { isCachedSelector } from '../_helpers/isCachedSelector';
 
 vi.mock('../debug/debug', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -305,6 +307,126 @@ describe('createChainSelector', () => {
     expect(chainFn).toHaveBeenCalledTimes(4);
     expect(firstSelector.recomputations()).toBe(2);
     expect(secondSelector.recomputations()).toBe(2);
+  });
+
+  test('should keep per key memoization for map levels over a cached selector', () => {
+    const mapFn = vi.fn((person?: { firstName?: string }) => person?.firstName ?? '');
+
+    const firstNameSelector = createChainSelector(personSelector).map(mapFn).build();
+
+    firstNameSelector(commonState, { id: 1 });
+    firstNameSelector(commonState, { id: 2 });
+    firstNameSelector(commonState, { id: 1 });
+    firstNameSelector(commonState, { id: 2 });
+
+    expect(mapFn).toHaveBeenCalledTimes(2);
+  });
+
+  test('should propagate the key selector of the base through map levels', () => {
+    const mappedSelector = createChainSelector(personSelector)
+      .map((person) => person?.firstName)
+      .map((firstName) => firstName ?? '')
+      .build();
+
+    // A `map` level never derives a cached selector, so its key is the base's own
+    // and is handed over as is instead of being recomposed per level.
+    expect((mappedSelector as unknown as CachedSelector).keySelector).toBe(
+      personSelector.keySelector,
+    );
+  });
+
+  test('should build a keyless level with the configured selector creator', () => {
+    const selectorCreator = vi.fn(createSelector);
+
+    const createSelectorOptions = () =>
+      ({ selectorCreator }) as unknown as CreateSelectorOptions<typeof createSelectorCreator>;
+
+    const personIdSelector = createChainSelector(messageSelector)
+      .map((message) => message.personId, { createSelectorOptions })
+      .build();
+
+    expect(personIdSelector(commonState, { id: 100 })).toBe(1);
+    expect(selectorCreator).toHaveBeenCalled();
+  });
+
+  test('should build a keyed level with the configured cache object', () => {
+    const cacheObject = {
+      set: vi.fn(),
+      get: vi.fn(),
+      remove: vi.fn(),
+      clear: vi.fn(),
+    };
+
+    const createSelectorOptions = () =>
+      ({ cacheObject }) as unknown as CreateSelectorOptions<typeof createSelectorCreator>;
+
+    const firstNameSelector = createChainSelector(personSelector)
+      .map((person) => person?.firstName, { createSelectorOptions })
+      .build();
+
+    firstNameSelector(commonState, { id: 1 });
+
+    // The base is keyed, so the level keeps its cache — and it is the configured
+    // one that receives the entry.
+    expect(cacheObject.set).toHaveBeenCalled();
+  });
+
+  test('should keep the hit rate of a chain level over an uncached selector', () => {
+    const chainMock = vi.fn((message: { personId: number }) => {
+      return createBoundSelector(personSelector, { id: message.personId });
+    });
+
+    // The base is a plain selector, so this level carries no key and is built as
+    // a plain memoized selector. Alternating between two results must still hit.
+    const personByMessageIdSelector = createChainSelector(messageSelector).chain(chainMock).build();
+
+    personByMessageIdSelector(commonState, { id: 100 });
+    personByMessageIdSelector(commonState, { id: 200 });
+    personByMessageIdSelector(commonState, { id: 100 });
+    personByMessageIdSelector(commonState, { id: 200 });
+
+    expect(chainMock).toHaveBeenCalledTimes(2);
+    expect(personByMessageIdSelector(commonState, { id: 100 }).firstName).toBe('Marry');
+    expect(personByMessageIdSelector(commonState, { id: 200 }).firstName).toBe('Harry');
+    expect(chainMock).toHaveBeenCalledTimes(2);
+  });
+
+  test('should compose the key of a map level with the chain composer', () => {
+    const firstKeySelector = createPropSelector<{ first: string }>().first();
+    const secondKeySelector = createPropSelector<{ second: string }>().second();
+
+    const arrayKeyedSelector = createCachedSelector(
+      [firstKeySelector, secondKeySelector],
+      (first, second) => `${first}${second}`,
+    )({
+      keySelector: arrayComposeKeySelectors(firstKeySelector, secondKeySelector),
+    });
+
+    const mappedSelector = createChainSelector(arrayKeyedSelector)
+      .map((value) => value.length)
+      .build();
+
+    const keySelector = (mappedSelector as unknown as CachedSelector).keySelector;
+
+    // The base composes an array key, but the level is cached with whatever the
+    // chain's own composer produces — a flat cache object cannot take an array.
+    expect(keySelector(expect.anything(), { first: 'a', second: 'b' })).toBe('a:b');
+  });
+
+  test('should not build a keyed cache when the key cannot vary', () => {
+    const mapFn = vi.fn((message: { personId: number }) => message.personId);
+
+    const personIdSelector = createChainSelector(messageSelector).map(mapFn).map(String).build();
+
+    expect(isCachedSelector(personIdSelector)).toBe(false);
+
+    // Dropping the cache changes nothing about memoization: a constant key means
+    // a single cache entry, which is what a plain memoized selector already is.
+    personIdSelector(commonState, { id: 100 });
+    personIdSelector(commonState, { id: 100 });
+    personIdSelector(commonState, { id: 100 });
+
+    expect(mapFn).toHaveBeenCalledTimes(1);
   });
 
   test('should implement aggregation for collection by single item selector', () => {
