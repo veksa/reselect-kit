@@ -390,17 +390,26 @@ map<R2>(fn: (result: R1) => R2, options?: ChainSelectorOptions): SelectorMonad
 
 ###### Keyed levels
 
-A level only gets a keyed cache when its key can actually vary. Chaining off a
-plain (uncached) selector gives every level the default key, so the cache would
-hold a single entry for the lifetime of the chain while every call still paid
-for the key computation and the lookup guarding it — those levels are built as
-plain memoized selectors instead, and the resulting selector carries no
-`keySelector` or `cache`. Chaining off a cached selector keeps the keyed caches,
-since the key is what makes them earn their keep.
+A level only gets a keyed cache when its key can actually vary. Where the key is
+a constant, the cache would hold a single entry for the lifetime of the chain
+while every call still paid for the key computation and the lookup guarding it,
+so the level is built as a plain memoized selector instead — the same mapping
+without the layer.
 
-A `map` level never derives a cached selector, so its key is always the base's
-own and is propagated as is rather than recomposed per level. Only `chain` has
-to inspect the derived selector to compose the level's key.
+What each level knows about its key differs:
+
+- a `map` level derives a plain `() => output`, never a cached selector, so its
+  key is its base's own and is composed once at build time. A chain of `map`s
+  over a plain (uncached) selector composes to the default key, and the built
+  selector then carries neither `keySelector` nor `cache`;
+- a `chain` level cannot know its key at build time, because the selector it
+  derives exists only per call and may itself be cached — chaining a bound
+  cached selector off a plain base is the ordinary case. So it always carries a
+  `keySelector` that resolves the derived selector's key. Over an uncached base
+  that key evaluates to the default, but it is not the default _selector_, so a
+  level built on top of it does take the keyed path and holds a single entry.
+
+Chaining off a cached selector is where those caches earn their keep.
 
 ###### build
 

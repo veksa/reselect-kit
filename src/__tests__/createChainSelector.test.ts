@@ -11,6 +11,7 @@ import { arrayComposeKeySelectors } from '../keys/arrayComposeKeySelectors';
 import { createSequenceSelector } from '../createSequenceSelector';
 import { CachedSelector, NamedSelector } from '../types';
 import { isCachedSelector } from '../_helpers/isCachedSelector';
+import { defaultKeySelector } from '../keys/defaultKeySelector';
 
 vi.mock('../debug/debug', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -427,6 +428,26 @@ describe('createChainSelector', () => {
     personIdSelector(commonState, { id: 100 });
 
     expect(mapFn).toHaveBeenCalledTimes(1);
+  });
+
+  test('should keep the key selector of a chain level whose derived selector may be cached', () => {
+    // A `chain` level cannot know at build time what it will derive, so unlike a
+    // `map` level it carries a key selector even over an uncached base. The key
+    // it resolves to is the default one, which is what makes the level itself
+    // skip the cache while still letting a level above compose from it.
+    const personSelectorByMessage: any = createChainSelector(messageSelector)
+      .chain((message) => (state: State) => state.persons.data[message.personId])
+      .build();
+
+    expect('keySelector' in personSelectorByMessage).toBe(true);
+    expect('cache' in personSelectorByMessage).toBe(false);
+    expect(personSelectorByMessage.keySelector(commonState, { id: 100 })).toBe(
+      defaultKeySelector(),
+    );
+
+    // Reading it still memoizes per key, which is what the cache would have done.
+    expect(personSelectorByMessage(commonState, { id: 100 }).firstName).toBe('Marry');
+    expect(personSelectorByMessage(commonState, { id: 200 }).firstName).toBe('Harry');
   });
 
   test('should implement aggregation for collection by single item selector', () => {
