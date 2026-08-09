@@ -113,9 +113,15 @@ const applyBinding = <S, P2, P1 extends Partial<P2>, R>(
       props as unknown as Record<string, unknown>,
       source,
     );
-    const result = baseSelector(state, nextProps as unknown as P1);
-    rollback();
-    return result;
+
+    // Restored through `finally` for the same reason the single-key path does
+    // it: the props object belongs to the caller, and a selector that throws
+    // must not leave the binding written into it.
+    try {
+      return baseSelector(state, nextProps as unknown as P1);
+    } finally {
+      rollback();
+    }
   };
 };
 

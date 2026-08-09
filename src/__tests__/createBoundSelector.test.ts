@@ -361,6 +361,31 @@ describe('createBoundSelector', () => {
     expect(marrySelector(commonState).firstName).toBe('Marry');
   });
 
+  test('should restore the caller props when the base selector throws', () => {
+    const failing = (_state: State, _props: { personId: number; messageId: number }): never => {
+      throw new Error('boom');
+    };
+
+    const singleKeyBound = createBoundSelector(failing, { personId: 1 });
+    const singleKeyProps = { messageId: 100 };
+
+    expect(() => singleKeyBound(commonState, singleKeyProps)).toThrow('boom');
+    expect(singleKeyProps).toEqual({ messageId: 100 });
+
+    const multiKeyFailing = (
+      _state: State,
+      _props: { personId: number; messageId: number; extra: number },
+    ): never => {
+      throw new Error('boom');
+    };
+
+    const multiKeyBound = createBoundSelector(multiKeyFailing, { personId: 1, messageId: 100 });
+    const multiKeyProps = { extra: 7 };
+
+    expect(() => multiKeyBound(commonState, multiKeyProps)).toThrow('boom');
+    expect(multiKeyProps).toEqual({ extra: 7 });
+  });
+
   test('should leave the caller props untouched when the binding is already applied', () => {
     const marryAndMessageSelector = createBoundSelector(personAndMessageSelector, {
       personId: 1,
