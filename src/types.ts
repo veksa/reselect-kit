@@ -1,5 +1,16 @@
-import { Selector, SelectorArray, SelectorsObject } from '@veksa/reselect';
+import {
+  GetParamsFromSelectors,
+  GetStateFromSelectors,
+  Selector,
+  SelectorArray,
+} from '@veksa/reselect';
 import { OutputCachedSelector } from '@veksa/re-reselect';
+
+/**
+ * The loosest shape a selector can take: a function of `state` plus any number
+ * of extra arguments. Used as the constraint for variadic tuple inference.
+ */
+export type AnySelector = (state: any, ...params: any[]) => any;
 
 /**
  * A selector carrying optional debug metadata. In the unified model a
@@ -42,17 +53,54 @@ export type UnionToIntersection<Union> = (
   ? Intersection
   : never;
 
-/** Intersection of the `state` argument of every selector in the object. */
-export type StructuredState<M extends SelectorsObject> = UnionToIntersection<
-  { [K in keyof M]: Parameters<M[K]>[0] }[keyof M]
->;
+/** The last member of a union, used to peel a union apart one type at a time. */
+type LastOf<Union> =
+  UnionToIntersection<Union extends unknown ? () => Union : never> extends () => infer Last
+    ? Last
+    : never;
 
-/** Union of the `props` argument (position 1) of every parametric selector. */
-export type StructuredPropsUnion<M extends SelectorsObject> = {
-  [K in keyof M]: Parameters<M[K]> extends [any, infer Props, ...any[]] ? Props : never;
-}[keyof M];
+/** Turns a union into a tuple by repeatedly peeling off its last member. */
+type TuplifyUnion<
+  Union,
+  Last = LastOf<Union>,
+  IsDone = [Union] extends [never] ? true : false,
+> = true extends IsDone ? [] : [...TuplifyUnion<Exclude<Union, Last>>, Last];
 
-/** The extra-arguments tuple: `[Props]` when any selector is parametric, else `[]`. */
-export type StructuredParams<M extends SelectorsObject> = [StructuredPropsUnion<M>] extends [never]
-  ? []
-  : [UnionToIntersection<StructuredPropsUnion<M>>];
+/**
+ * Type-level `Object.values()`: `{ foo: Selector, bar: Selector }` becomes the
+ * ordered tuple `[Selector, Selector]`.
+ *
+ * The tuple is what reselect's parameter merging needs: an unordered
+ * `Array<M[keyof M]>` collapses the selectors into a union and loses the
+ * per-position arguments, so `props` resolves to `never`.
+ */
+export type ObjectValuesToTuple<
+  M extends Record<string, AnySelector>,
+  Keys extends any[] = TuplifyUnion<keyof M>,
+  Result extends AnySelector[] = [],
+> = Keys extends [infer Key, ...infer Rest]
+  ? ObjectValuesToTuple<M, Rest, [...Result, M[Key & keyof M]]>
+  : Result;
+
+/**
+ * Normalises a group of selectors — an object or a tuple — into the tuple form
+ * that {@link MergedState} and {@link MergedParams} merge over.
+ */
+export type SelectorTuple<Selectors> = Selectors extends readonly AnySelector[]
+  ? Selectors
+  : Selectors extends Record<string, AnySelector>
+    ? ObjectValuesToTuple<Selectors>
+    : never;
+
+/**
+ * The `state` every selector in the group accepts: the intersection of their
+ * first arguments.
+ */
+export type MergedState<Selectors> = GetStateFromSelectors<SelectorTuple<Selectors>>;
+
+/**
+ * The extra arguments the group takes beyond `state`, merged element-wise:
+ * `[]` when no selector is parametric, `[Props]` when some are — with the
+ * `Props` of every parametric selector intersected.
+ */
+export type MergedParams<Selectors> = GetParamsFromSelectors<SelectorTuple<Selectors>>;

@@ -2,7 +2,7 @@ import { shallowEqual, useSelector as useReduxSelector } from '@veksa/react-redu
 import { SelectorResultsMap, SelectorsObject } from '@veksa/reselect';
 import { useRef } from 'react';
 import { unfreezeProps } from '../_helpers/unfreezeProps';
-import { StructuredParams } from '../types';
+import { MergedParams } from '../types';
 import { selectorOptions } from './selectorOptions';
 
 type SelectorsMap = Record<string, Function>;
@@ -108,7 +108,7 @@ const select = (cache: SelectorsCache, state: unknown) => {
  */
 export function useSelectors<M extends SelectorsObject>(
   selectors: M,
-  ...params: StructuredParams<M>
+  ...params: MergedParams<M>
 ): SelectorResultsMap<M>;
 
 export function useSelectors(selectors: SelectorsMap, ...params: any[]) {

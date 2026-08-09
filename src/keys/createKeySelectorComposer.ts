@@ -1,5 +1,5 @@
 import { KeySelector } from '@veksa/re-reselect';
-import { UnionToIntersection } from '../types';
+import { MergedParams, MergedState } from '../types';
 
 export const composedKeySelectorSymbol = Symbol.for('ComposedKeySelector');
 
@@ -9,39 +9,28 @@ export const composedKeySelectorSymbol = Symbol.for('ComposedKeySelector');
  */
 type AnyKeySelector = KeySelector<any>;
 
-/** Intersection of every input key selector's `state` argument. */
-type ComposedState<Ks extends readonly AnyKeySelector[]> = UnionToIntersection<
-  { [Index in keyof Ks]: Parameters<Ks[Index]>[0] }[number]
->;
-
-/** Union of every input key selector's `props` argument (position 1), if any. */
-type PropsUnion<Ks extends readonly AnyKeySelector[]> = {
-  [Index in keyof Ks]: Parameters<Ks[Index]> extends [any, infer Props, ...any[]] ? Props : never;
-}[number];
-
-/** Intersection of every input key selector's `props`, or `never` if none are parametric. */
-type ComposedProps<Ks extends readonly AnyKeySelector[]> = [PropsUnion<Ks>] extends [never]
-  ? never
-  : UnionToIntersection<PropsUnion<Ks>>;
-
 /**
  * The key selector produced by a {@link KeySelectorComposer}: a function that
- * intersects the `state` (and `props`, when any input is parametric) of every
- * composed key selector, tagged with the original inputs as `dependencies`.
+ * intersects the `state` and the extra arguments of every composed key
+ * selector, tagged with the original inputs as `dependencies`.
  */
-export type OutputKeySelector<S, P, D extends readonly AnyKeySelector[]> = ([P] extends [never]
-  ? (state: S) => unknown
-  : (state: S, props: P) => unknown) & {
+export type OutputKeySelector<
+  S,
+  Params extends readonly any[],
+  D extends readonly AnyKeySelector[],
+> = ((state: S, ...params: Params) => unknown) & {
   dependencies: D;
 };
 
 /**
  * Composes N key selectors into a single one. A single variadic signature with
- * tuple inference replaces the former per-arity overload set.
+ * tuple inference replaces the former per-arity overload set; `state` and the
+ * extra arguments are merged by the same helpers every other multi-selector
+ * creator in the library uses.
  */
 export type KeySelectorComposer = <Ks extends readonly AnyKeySelector[]>(
   ...keySelectors: Ks
-) => OutputKeySelector<ComposedState<Ks>, ComposedProps<Ks>, Ks>;
+) => OutputKeySelector<MergedState<Ks>, MergedParams<Ks>, Ks>;
 
 export function isComposedKeySelector(
   keySelector: AnyKeySelector,

@@ -32,3 +32,11 @@ expectTypeOf(cachedSelector(stateFixture, { personId: 1 })).toEqualTypeOf<{
   person: Person;
   currentMessage: Message;
 }>();
+
+// the key selector is typed from the batch, so its arguments are checked
+createCachedStructuredSelector({
+  person: (state: State, props: PersonProps) => state.persons.data[props.personId],
+})({
+  // @ts-expect-error - `messageId` is not part of the batch's props
+  keySelector: (state, props) => props.messageId,
+});
