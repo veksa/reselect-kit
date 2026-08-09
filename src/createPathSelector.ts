@@ -1,5 +1,4 @@
-import { Selector } from '@veksa/reselect';
-import { NamedParametricSelector, NamedSelector, Path } from './types';
+import { NamedSelector, Path } from './types';
 import { isObject } from './_helpers/isObject';
 import { withDebugName } from './debug/withDebugName';
 import { getSelectorName } from './_helpers/getSelectorName';
@@ -10,131 +9,94 @@ export type IsOptional<T> = undefined extends T ? true : null extends T ? true :
 
 export type IsObject<T> = T extends object ? true : false;
 
-export type PathSelector<S, R, D> = NamedSelector<S, R, [], D> & {
-  path: Path;
-};
-
-export type PathParametricSelector<S, P, R, D> = NamedParametricSelector<S, P, R, D> & {
+/**
+ * The selector a path builder produces. `Params` is carried through untouched
+ * from the base selector: walking a path changes the result, never the
+ * arguments, so the plain and the parametric case are the same type.
+ */
+export type PathSelector<S, R, Params extends readonly any[], D> = NamedSelector<
+  S,
+  R,
+  Params,
+  D
+> & {
   path: Path;
 };
 
 type Required<T> = { [P in keyof T]-?: Exclude<T[P], undefined | null> };
 
-export type RequiredSelectorBuilder<S, R, D> = R extends object
-  ? { [K in keyof R]: () => PathSelector<S, NonNullable<R[K]>, D> }
+export type RequiredSelectorBuilder<S, R, Params extends readonly any[], D> = R extends object
+  ? { [K in keyof R]: () => PathSelector<S, NonNullable<R[K]>, Params, D> }
   : {};
 
-export type OptionalSelectorBuilder<S, R, D> = ((
+export type OptionalSelectorBuilder<S, R, Params extends readonly any[], D> = ((
   defaultValue?: R,
-) => PathSelector<S, R extends undefined ? Defined<R> : R, D>) &
+) => PathSelector<S, R extends undefined ? Defined<R> : R, Params, D>) &
   (R extends object
-    ? { [K in keyof Required<R>]: () => PathSelector<S, NonNullable<R[K]>, D> }
+    ? { [K in keyof Required<R>]: () => PathSelector<S, NonNullable<R[K]>, Params, D> }
     : {});
 
-export type RequiredParametricSelectorBuilder<S, P, R, D> = R extends object
-  ? { [K in keyof R]: () => PathParametricSelector<S, P, NonNullable<R[K]>, D> }
-  : {};
-
-export type OptionalParametricSelectorBuilder<S, P, R, D> = ((
-  defaultValue?: R,
-) => PathParametricSelector<S, P, R extends undefined ? Defined<R> : R, D>) &
-  (R extends object
-    ? { [K in keyof Required<R>]: () => PathParametricSelector<S, P, NonNullable<R[K]>, D> }
-    : {});
-
-export type RequiredObjectSelectorWrapper<S, R, D> = {
+export type RequiredObjectSelectorWrapper<S, R, Params extends readonly any[], D> = {
   [K in keyof R]-?: IsOptional<R[K]> extends true
-    ? OptionalPathSelectorType<S, R[K], D>
-    : RequiredPathSelectorType<S, R[K], D>;
+    ? OptionalPathSelectorType<S, R[K], Params, D>
+    : RequiredPathSelectorType<S, R[K], Params, D>;
 };
 
-export type OptionalObjectSelectorWrapper<S, R, D> = {
-  [K in keyof R]-?: OptionalPathSelectorType<S, R[K], D>;
+export type OptionalObjectSelectorWrapper<S, R, Params extends readonly any[], D> = {
+  [K in keyof R]-?: OptionalPathSelectorType<S, R[K], Params, D>;
 };
 
-export type RequiredObjectParametricSelectorWrapper<S, P, R, D> = {
-  [K in keyof R]-?: IsOptional<R[K]> extends true
-    ? OptionalPathParametricSelectorType<S, P, R[K], D>
-    : RequiredPathParametricSelectorType<S, P, R[K], D>;
-};
-
-export type OptionalObjectParametricSelectorWrapper<S, P, R, D> = {
-  [K in keyof R]-?: OptionalPathParametricSelectorType<S, P, R[K], D>;
-};
-
-export type RequiredArraySelectorWrapper<S, R, D> = {
-  length: RequiredPathSelectorType<S, number, D>;
+export type RequiredArraySelectorWrapper<S, R, Params extends readonly any[], D> = {
+  length: RequiredPathSelectorType<S, number, Params, D>;
 
   [K: number]: IsOptional<R> extends true
-    ? OptionalPathSelectorType<S, R, D>
-    : RequiredPathSelectorType<S, R, D>;
+    ? OptionalPathSelectorType<S, R, Params, D>
+    : RequiredPathSelectorType<S, R, Params, D>;
 };
 
-export type OptionalArraySelectorWrapper<S, R, D> = {
-  length: RequiredPathSelectorType<S, number, D>;
+export type OptionalArraySelectorWrapper<S, R, Params extends readonly any[], D> = {
+  length: RequiredPathSelectorType<S, number, Params, D>;
 
-  [K: number]: OptionalPathSelectorType<S, R, D>;
+  [K: number]: OptionalPathSelectorType<S, R, Params, D>;
 };
 
-export type RequiredArrayParametricSelectorWrapper<S, P, R, D> = {
-  length: RequiredPathParametricSelectorType<S, P, number, D>;
-
-  [K: number]: IsOptional<R> extends true
-    ? OptionalPathParametricSelectorType<S, P, R, D>
-    : RequiredPathParametricSelectorType<S, P, R, D>;
-};
-
-export type OptionalArrayParametricSelectorWrapper<S, P, R, D> = {
-  length: RequiredPathParametricSelectorType<S, P, number, D>;
-
-  [K: number]: OptionalPathParametricSelectorType<S, P, R, D>;
-};
-
-export type RequiredDataSelectorWrapper<S, R, D> = R extends unknown[]
-  ? RequiredArraySelectorWrapper<S, R[number], D>
-  : IsObject<R> extends true
-    ? RequiredObjectSelectorWrapper<S, R, D>
-    : RequiredSelectorBuilder<S, R, D>;
-
-export type OptionalDataSelectorWrapper<S, R, D> = R extends unknown[]
-  ? OptionalArraySelectorWrapper<S, R[number], D>
-  : IsObject<R> extends true
-    ? OptionalObjectSelectorWrapper<S, R, D>
-    : OptionalSelectorBuilder<S, R, D>;
-
-export type RequiredDataParametricSelectorWrapper<S, P, R, D> = R extends unknown[]
-  ? RequiredArrayParametricSelectorWrapper<S, P, R[number], D>
-  : IsObject<R> extends true
-    ? RequiredObjectParametricSelectorWrapper<S, P, R, D>
-    : RequiredParametricSelectorBuilder<S, P, R, D>;
-
-export type OptionalDataParametricSelectorWrapper<S, P, R, D> = R extends unknown[]
-  ? OptionalArrayParametricSelectorWrapper<S, P, R[number], D>
-  : IsObject<R> extends true
-    ? OptionalObjectParametricSelectorWrapper<S, P, R, D>
-    : OptionalParametricSelectorBuilder<S, P, R, D>;
-
-export type RequiredPathSelectorType<S, R, D> = RequiredSelectorBuilder<S, R, D> &
-  RequiredDataSelectorWrapper<S, NonNullable<R>, D>;
-
-export type OptionalPathSelectorType<S, R, D> = OptionalSelectorBuilder<S, R, D> &
-  OptionalDataSelectorWrapper<S, NonNullable<R>, D>;
-
-export type RequiredPathParametricSelectorType<S, P, R, D> = RequiredParametricSelectorBuilder<
+export type RequiredDataSelectorWrapper<
   S,
-  P,
   R,
-  D
-> &
-  RequiredDataParametricSelectorWrapper<S, P, NonNullable<R>, D>;
+  Params extends readonly any[],
+  D,
+> = R extends unknown[]
+  ? RequiredArraySelectorWrapper<S, R[number], Params, D>
+  : IsObject<R> extends true
+    ? RequiredObjectSelectorWrapper<S, R, Params, D>
+    : RequiredSelectorBuilder<S, R, Params, D>;
 
-export type OptionalPathParametricSelectorType<S, P, R, D> = OptionalParametricSelectorBuilder<
+export type OptionalDataSelectorWrapper<
   S,
-  P,
   R,
-  D
-> &
-  OptionalDataParametricSelectorWrapper<S, P, NonNullable<R>, D>;
+  Params extends readonly any[],
+  D,
+> = R extends unknown[]
+  ? OptionalArraySelectorWrapper<S, R[number], Params, D>
+  : IsObject<R> extends true
+    ? OptionalObjectSelectorWrapper<S, R, Params, D>
+    : OptionalSelectorBuilder<S, R, Params, D>;
+
+export type RequiredPathSelectorType<
+  S,
+  R,
+  Params extends readonly any[],
+  D,
+> = RequiredSelectorBuilder<S, R, Params, D> &
+  RequiredDataSelectorWrapper<S, NonNullable<R>, Params, D>;
+
+export type OptionalPathSelectorType<
+  S,
+  R,
+  Params extends readonly any[],
+  D,
+> = OptionalSelectorBuilder<S, R, Params, D> &
+  OptionalDataSelectorWrapper<S, NonNullable<R>, Params, D>;
 
 const defaultVoidFunction = () => {
   return;
@@ -195,14 +157,17 @@ export const innerCreatePathSelector = (
   });
 };
 
-export function createPathSelector<S, R, P = void>(
-  baseSelector: P extends void ? Selector<S, R> : Selector<S, R, [P]>,
-): P extends void
-  ? IsOptional<R> extends true
-    ? OptionalPathSelectorType<S, R, [Selector<S, R>]>
-    : RequiredPathSelectorType<S, R, [Selector<S, R>]>
-  : IsOptional<R> extends true
-    ? OptionalPathParametricSelectorType<S, P, R, [Selector<S, R, [P]>]>
-    : RequiredPathParametricSelectorType<S, P, R, [Selector<S, R, [P]>]> {
+/**
+ * Builds a proxy that turns property access into a selector reading that path.
+ *
+ * `Params` is inferred straight from the base selector, so the plain and the
+ * parametric case share one signature — and one set of builder types — instead
+ * of being told apart by a conditional in the parameter position.
+ */
+export function createPathSelector<S, R, Params extends readonly any[]>(
+  baseSelector: (state: S, ...params: Params) => R,
+): IsOptional<R> extends true
+  ? OptionalPathSelectorType<S, R, Params, [typeof baseSelector]>
+  : RequiredPathSelectorType<S, R, Params, [typeof baseSelector]> {
   return innerCreatePathSelector(baseSelector as (...args: unknown[]) => unknown) as any;
 }
