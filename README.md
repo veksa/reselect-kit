@@ -21,6 +21,7 @@ A powerful toolkit that extends the capabilities of @veksa/reselect and @veksa/r
 - **Bound Selectors** - Create selectors with predefined parameters for reuse across components
 - **Adapted Selectors** - Transform selector parameters to simplify composition and reuse
 - **Enhanced Structured Selectors** - Better typed alternatives to createStructuredSelector with caching support
+- **Batched Store Reads** - Read a whole group of selectors through a single store subscription with `useSelectors`
 - **Key Selector Composition** - Compose key selectors for complex cache keys in re-reselect
 - **Custom Caching** - Optimize performance with advanced garbage collection and cache strategies
 - **TypeScript Support** - Full TypeScript type definitions with strict typing
@@ -234,6 +235,36 @@ const profile = getUserProfile(state, '123');
 // Returns: { name: 'John', email: 'john@example.com', address: { ... } }
 ```
 
+### Reading a Batch of Selectors in a Component
+
+The same structural idea at the call site: `useSelectors` takes an object of
+selectors and reads them all through one store subscription.
+
+```typescript
+import { useSelectors } from 'reselect-kit';
+
+const QuoteRow = ({ symbol }) => {
+  const { bid, ask, volume } = useSelectors({ bid: getBid, ask: getAsk, volume: getVolume }, { symbol });
+
+  return <Row bid={bid} ask={ask} volume={volume} />;
+};
+```
+
+Which of the two to use is a question of where the memoization should live, not
+of speed — they perform the same:
+
+|              | `createCachedStructuredSelector`              | `useSelectors`                   |
+| ------------ | --------------------------------------------- | -------------------------------- |
+| What it is   | a selector: composable, usable outside React  | a read at the call site only     |
+| Memoization  | one module-level cache, keyed                 | one slot per component instance  |
+| Cache key    | a key selector is required                    | none                             |
+| Cache sizing | must hold every live row, or it thrashes      | dies with the component          |
+| Sharing      | two components with the same key compute once | every component computes its own |
+
+Reuse the batch elsewhere, or feed it into another selector — build a structured
+selector. If the batch is simply "what this component reads", reach for the hook
+and skip the key selector and the cache sizing.
+
 ### Key Selector Composition
 
 ```typescript
@@ -412,6 +443,40 @@ const getUserStats = createSequenceSelector([
 // Returns [postsCount, followersCount, likesCount]
 ```
 
+### Hooks
+
+#### useSelector
+
+Reads one selector from the store. Props are compared shallowly, so an inline
+object literal does not invalidate the selector on every render.
+
+```typescript
+const price = useSelector(getPrice, { symbol });
+```
+
+#### useSelectors
+
+Reads a batch of selectors through a **single** store subscription and returns
+their results as one object.
+
+```typescript
+const { symbol, bid, ask } = useSelectors(
+  { symbol: getSymbol, bid: getBid, ask: getAsk },
+  { symbol },
+);
+```
+
+Seven `useSelector` calls in a row component mean seven store listeners, seven
+`useSyncExternalStore` instances and seven snapshot comparisons per dispatch;
+`useSelectors` collapses them into one of each. The result object keeps its
+reference while every field is unchanged, so an update that touches nothing the
+row reads does not re-render it.
+
+The trade-off against separate hooks is granularity: any tracked state segment
+changing re-runs the whole batch, which for memoized selectors is a cache hit
+per field. See [Reading a Batch of Selectors in a Component](#reading-a-batch-of-selectors-in-a-component)
+for how this compares with a structured selector.
+
 ### Cache Objects
 
 #### TreeCache
@@ -462,6 +527,8 @@ cache.set('key', selectorData);
 | Advanced key composition    | ×               | Limited            | ✓                    |
 | Cache garbage collection    | ×               | ×                  | ✓                    |
 | Hierarchical caching        | ×               | ×                  | ✓                    |
+| Props-aware React hooks     | ×               | ×                  | ✓                    |
+| Batched store subscription  | ×               | ×                  | ✓                    |
 | Typescript support          | ✓               | ✓                  | ✓ (enhanced)         |
 
 ## Contributing

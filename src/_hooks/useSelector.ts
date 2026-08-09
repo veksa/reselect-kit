@@ -1,27 +1,7 @@
 import { shallowEqual, useSelector as useReduxSelector } from '@veksa/react-redux';
 import { useRef } from 'react';
-
-// Hoisted: react-redux reads the options object on every render, so there is no
-// reason to allocate a fresh one per call site per render.
-const selectorOptions = {
-  devModeChecks: {
-    stabilityCheck: 'never',
-    identityFunctionCheck: 'never',
-  },
-} as const;
-
-// Bound selectors write the binding into the props object in place and roll it
-// back afterwards (see temporaryAssign.ts), which throws on a frozen target in
-// strict mode. React freezes element props in development, and immer-based
-// stores hand out frozen objects in production too, so the copy stays in both
-// builds — it only ever runs when props actually change.
-const unfreeze = (props: unknown) => {
-  if (typeof props !== 'object' || props === null || !Object.isFrozen(props)) {
-    return props;
-  }
-
-  return Array.isArray(props) ? props.slice() : { ...props };
-};
+import { unfreezeProps } from '../_helpers/unfreezeProps';
+import { selectorOptions } from './selectorOptions';
 
 type SelectorCache = {
   props: unknown;
@@ -30,6 +10,13 @@ type SelectorCache = {
   boundSelector: (state: unknown) => unknown;
 };
 
+/**
+ * Reads one selector from the store. Props are compared shallowly, so an inline
+ * object literal does not invalidate the selector on every render.
+ *
+ * Use {@link useSelectors} to read several selectors through a single store
+ * subscription.
+ */
 export function useSelector<S extends object, R>(selector: (state: S) => R): R;
 
 export function useSelector<S extends object, P, R>(
@@ -49,7 +36,7 @@ export function useSelector(selector: Function, ...params: any[]) {
   let cache = cacheRef.current;
 
   if (cache === null) {
-    const unfrozenProps = unfreeze(props);
+    const unfrozenProps = unfreezeProps(props);
 
     cache = cacheRef.current = {
       props,
@@ -64,7 +51,7 @@ export function useSelector(selector: Function, ...params: any[]) {
 
     if (propsChanged) {
       cache.props = props;
-      cache.unfrozenProps = unfreeze(props);
+      cache.unfrozenProps = unfreezeProps(props);
     }
 
     if (propsChanged || cache.selector !== selector) {

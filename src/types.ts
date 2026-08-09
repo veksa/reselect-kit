@@ -1,4 +1,4 @@
-import { Selector, SelectorArray } from '@veksa/reselect';
+import { Selector, SelectorArray, SelectorsObject } from '@veksa/reselect';
 import { OutputCachedSelector } from '@veksa/re-reselect';
 
 /**
@@ -41,3 +41,18 @@ export type UnionToIntersection<Union> = (
 ) extends (merged: infer Intersection) => void
   ? Intersection
   : never;
+
+/** Intersection of the `state` argument of every selector in the object. */
+export type StructuredState<M extends SelectorsObject> = UnionToIntersection<
+  { [K in keyof M]: Parameters<M[K]>[0] }[keyof M]
+>;
+
+/** Union of the `props` argument (position 1) of every parametric selector. */
+export type StructuredPropsUnion<M extends SelectorsObject> = {
+  [K in keyof M]: Parameters<M[K]> extends [any, infer Props, ...any[]] ? Props : never;
+}[keyof M];
+
+/** The extra-arguments tuple: `[Props]` when any selector is parametric, else `[]`. */
+export type StructuredParams<M extends SelectorsObject> = [StructuredPropsUnion<M>] extends [never]
+  ? []
+  : [UnionToIntersection<StructuredPropsUnion<M>>];

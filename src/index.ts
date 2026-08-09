@@ -24,3 +24,4 @@ export { initGarbageCollector, IntervalMapCache } from './cache/intervalMapCache
 export { TreeCache } from './cache/TreeCache';
 
 export { useSelector } from './_hooks/useSelector';
+export { useSelectors } from './_hooks/useSelectors';

@@ -1,22 +1,7 @@
 import { createSelector, Selector, SelectorResultsMap, SelectorsObject } from '@veksa/reselect';
 import { createCachedSelector, PolymorphicCachedOptions } from '@veksa/re-reselect';
 import { createStructuredSelector } from './createStructuredSelector';
-import { UnionToIntersection } from './types';
-
-/** Intersection of the `state` argument of every selector in the object. */
-type StructuredState<M extends SelectorsObject> = UnionToIntersection<
-  { [K in keyof M]: Parameters<M[K]>[0] }[keyof M]
->;
-
-/** Union of the `props` argument (position 1) of every parametric selector. */
-type StructuredPropsUnion<M extends SelectorsObject> = {
-  [K in keyof M]: Parameters<M[K]> extends [any, infer Props, ...any[]] ? Props : never;
-}[keyof M];
-
-/** The extra-arguments tuple: `[Props]` when any selector is parametric, else `[]`. */
-type StructuredParams<M extends SelectorsObject> = [StructuredPropsUnion<M>] extends [never]
-  ? []
-  : [UnionToIntersection<StructuredPropsUnion<M>>];
+import { StructuredParams, StructuredState } from './types';
 
 /** The input selectors as reselect sees them, used to type the cached options. */
 type StructuredInputs<M extends SelectorsObject> = Selector<
