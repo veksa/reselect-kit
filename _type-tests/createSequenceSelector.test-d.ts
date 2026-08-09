@@ -44,3 +44,8 @@ expectTypeOf(getMixed(stateFixture, { personId: 1 })).toEqualTypeOf<[Person, num
 
 // @ts-expect-error - props are required when a selector is parametric
 getParametricNumbers(stateFixture);
+
+// an empty sequence constrains no state, so it stays callable
+const getNothing = createSequenceSelector([]);
+
+expectTypeOf(getNothing(stateFixture)).toEqualTypeOf<[]>();

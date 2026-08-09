@@ -89,11 +89,14 @@ type OptionalPropsOf<S> = S extends AnySelector
 
 /**
  * The `state` every selector in the group accepts: the intersection of their
- * first arguments.
+ * first arguments. An empty group constrains nothing, so it reads `unknown`
+ * rather than the `never` an intersection of no members would otherwise give.
  */
-export type MergedState<Selectors> = Selectors extends readonly AnySelector[]
-  ? GetStateFromSelectors<Selectors>
-  : UnionToIntersection<StateOf<SelectorsUnion<Selectors>>>;
+export type MergedState<Selectors> = Selectors extends readonly []
+  ? unknown
+  : Selectors extends readonly AnySelector[]
+    ? GetStateFromSelectors<Selectors>
+    : UnionToIntersection<StateOf<SelectorsUnion<Selectors>>>;
 
 /**
  * The props of a union of selectors, as the argument tuple that reads all of
