@@ -1,11 +1,12 @@
 import { createCachedSelector } from '@veksa/re-reselect';
-import { commonState, State } from '../__data__/state';
+import { commonState, Person, State } from '../__data__/state';
 import { createBoundSelector } from '../createBoundSelector';
 import { createStructuredSelector } from '../createStructuredSelector';
 import { NamedSelector } from '../types';
 import { createPropSelector } from '../createPropSelector';
 import { isComposedKeySelector } from '../keys/createKeySelectorComposer';
 import { stringComposeKeySelectors } from '../keys/stringComposeKeySelectors';
+import { arrayComposeKeySelectors } from '../keys/arrayComposeKeySelectors';
 import { isCachedSelector } from '../_helpers/isCachedSelector';
 import { defaultKeySelector } from '../keys/defaultKeySelector';
 
@@ -310,6 +311,68 @@ describe('createBoundSelector', () => {
     const { keySelector } = boundSelector;
 
     expect(isComposedKeySelector(keySelector)).toBeTruthy();
+  });
+
+  test('should compose the remaining key selectors with the configured composer', () => {
+    const firstPropSelector = createPropSelector<{ value1: number }>().value1();
+    const secondPropSelector = createPropSelector<{ value2: number }>().value2();
+    const thirdPropSelector = createPropSelector<{ value3: number }>().value3();
+
+    const selector = createCachedSelector([], () => {})({
+      keySelector: stringComposeKeySelectors(
+        firstPropSelector,
+        secondPropSelector,
+        thirdPropSelector,
+      ),
+    });
+
+    const boundSelector = createBoundSelector(
+      selector,
+      { value1: 1 },
+      { keySelectorComposer: arrayComposeKeySelectors },
+    );
+
+    if (!isCachedSelector(boundSelector)) {
+      throw new Error('selector should be cached');
+    }
+
+    const key = boundSelector.keySelector(commonState, {
+      value2: 2,
+      value3: 3,
+    }) as unknown;
+
+    // The default composer would have joined these into '2:3'.
+    expect(key).toEqual([2, 3]);
+  });
+
+  test('should apply the binding through the configured strategy', () => {
+    const bindingStrategy = vi.fn(
+      (
+        baseSelector: (state: State, props: { personId: number }) => Person,
+        binding: { personId: number },
+      ) =>
+        (state: State) =>
+          baseSelector(state, binding),
+    );
+
+    const marrySelector = createBoundSelector(personSelector, { personId: 1 }, { bindingStrategy });
+
+    expect(bindingStrategy).toHaveBeenCalledTimes(1);
+    expect(marrySelector(commonState).firstName).toBe('Marry');
+  });
+
+  test('should leave the caller props untouched when the binding is already applied', () => {
+    const marryAndMessageSelector = createBoundSelector(personAndMessageSelector, {
+      personId: 1,
+    });
+
+    // The bound key is already present with the bound value, so there is nothing
+    // to save and nothing to restore.
+    const props = { personId: 1, messageId: 100 };
+    const marryAndMessage = marryAndMessageSelector(commonState, props);
+
+    expect(marryAndMessage.person.firstName).toBe('Marry');
+    expect(props).toEqual({ personId: 1, messageId: 100 });
   });
 
   test('should bound exotic key selector without exclude', () => {

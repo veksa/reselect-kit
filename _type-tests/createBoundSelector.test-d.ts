@@ -1,6 +1,6 @@
 import { expectTypeOf } from 'expect-type';
 import { Selector } from '@veksa/reselect';
-import { createBoundSelector, useSelector } from '../src/index';
+import { arrayComposeKeySelectors, createBoundSelector, useSelector } from '../src/index';
 import { Person, State } from './models';
 
 const stateFixture: State = {
@@ -34,15 +34,30 @@ expectTypeOf(partiallyBoundSelector(stateFixture, { messageId: 100 })).toEqualTy
   Person | undefined
 >();
 
-// a custom binding options object is accepted
+// a custom binding options object is accepted and its key selector composer is
+// typed against the library's own
 const boundWithOptions = createBoundSelector(
   personSelector,
   { personId: 1 },
   {
-    keySelectorComposer: undefined,
+    keySelectorComposer: arrayComposeKeySelectors,
   },
 );
 expectTypeOf(boundWithOptions(stateFixture)).toEqualTypeOf<Person | undefined>();
+
+// a custom binding strategy sees the base selector and the binding, and returns
+// the selector that reads what the binding did not supply
+const boundWithStrategy = createBoundSelector(
+  twoPropsSelector,
+  { personId: 1 },
+  {
+    bindingStrategy: (baseSelector, binding) => (state, props) =>
+      baseSelector(state, { ...props, ...binding }),
+  },
+);
+expectTypeOf(boundWithStrategy(stateFixture, { messageId: 100 })).toEqualTypeOf<
+  Person | undefined
+>();
 
 // the binding must be a subset of the selector props
 // @ts-expect-error - `unknownProp` is not a prop of the selector

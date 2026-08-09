@@ -47,30 +47,93 @@ export type BoundSelectorOptions<S, P2, P1 extends Partial<P2>, R> = {
   keySelectorComposer?: KeySelectorComposer;
 };
 
-const innerCreateBoundSelector = <S, P2, P1 extends Partial<P2>, R>(
+/**
+ * The default binding strategy: applies the binding to the props the caller
+ * passed, hands them to the base selector, and puts them back as they were.
+ *
+ * Almost every binding is a single key — `bound(selector, { positionId })` —
+ * and specialising it removes the two allocations the generic path costs per
+ * call: the `{ result, rollback }` object and the `rollback` closure. On a
+ * graph with a bound selector per row those are the calls that dominate.
+ *
+ * The `delete` in the restore stays deliberately. Leaving the key behind as
+ * `undefined` would be cheaper — it avoids putting the caller's props object
+ * into dictionary mode — but it also changes the object's shape, and
+ * `useSelector` memoizes props shallowly: a props object that has grown an
+ * extra key never again compares equal to a freshly built one, so the
+ * memoization the binding exists to protect would be defeated.
+ */
+const applyBinding = <S, P2, P1 extends Partial<P2>, R>(
   baseSelector: (state: S, props: P1) => R,
   binding: P2,
 ) => {
-  const boundSelector = (state: S, props: Omit<P1, keyof P2> | void) =>
-    baseSelector(state, {
-      ...props,
-      ...binding,
-    } as unknown as P1);
+  const source = binding as unknown as Record<string, unknown>;
+  const keys = Object.keys(source);
 
-  return boundSelector as unknown as BoundSelector<S, P2, P1, R>;
+  if (keys.length === 1) {
+    const key = keys[0];
+    const value = source[key];
+
+    return (state: S, props: Omit<P1, keyof P2> | void) => {
+      const target = props as unknown as Record<string, unknown>;
+
+      // Nothing to merge into when the selector is read without props, which is
+      // what a fully bound selector is called like.
+      if (typeof target !== 'object' || target === null) {
+        return baseSelector(state, source as unknown as P1);
+      }
+
+      const previous = target[key];
+
+      // A re-entrant call that finds the binding already applied has nothing to
+      // save and nothing to restore.
+      if (previous === value) {
+        return baseSelector(state, props as unknown as P1);
+      }
+
+      const had = Object.prototype.hasOwnProperty.call(target, key);
+      target[key] = value;
+
+      try {
+        return baseSelector(state, props as unknown as P1);
+      } finally {
+        if (had) {
+          target[key] = previous;
+        } else {
+          delete target[key];
+        }
+      }
+    };
+  }
+
+  return (state: S, props: Omit<P1, keyof P2> | void) => {
+    // `temporaryAssign` falls back to the binding itself when there are no props
+    // to merge into, which is the read of a fully bound selector.
+    const { result: nextProps, rollback } = temporaryAssign(
+      props as unknown as Record<string, unknown>,
+      source,
+    );
+    const result = baseSelector(state, nextProps as unknown as P1);
+    rollback();
+    return result;
+  };
 };
 
-const createBoundInnerSelector = <S, P2 extends object, P1 extends Partial<P2>, R, OR extends R>(
+export const createBoundSelector = <S, P2 extends object, P1 extends Partial<P2>, R, OR extends R>(
   baseSelector: (state: S, props: P1) => R,
   binding: P2,
   options: BoundSelectorOptions<S, P2, P1, OR> = {},
 ): BoundSelector<S, P2, P1, R> => {
-  const bindingStrategy =
-    (options.bindingStrategy as typeof innerCreateBoundSelector) ?? innerCreateBoundSelector;
+  const bindingStrategy = (options.bindingStrategy as typeof applyBinding) ?? applyBinding;
 
   const keySelectorComposer = options.keySelectorComposer ?? stringComposeKeySelectors;
 
-  const boundSelector = bindingStrategy(baseSelector, binding);
+  const boundSelector = bindingStrategy(baseSelector, binding) as unknown as BoundSelector<
+    S,
+    P2,
+    P1,
+    R
+  >;
 
   Object.assign(boundSelector, baseSelector);
   boundSelector.dependencies = [baseSelector];
@@ -133,67 +196,4 @@ const createBoundInnerSelector = <S, P2 extends object, P1 extends Partial<P2>, 
   }
 
   return boundSelector;
-};
-
-export const createBoundSelector: typeof createBoundInnerSelector = (baseSelector, binding) => {
-  return createBoundInnerSelector(baseSelector, binding, {
-    bindingStrategy: (selector, bindingProps) => {
-      const source = bindingProps as unknown as Record<string, unknown>;
-      const keys = Object.keys(source);
-
-      /**
-       * Almost every binding is a single key — `bound(selector, { positionId })` —
-       * and specialising it removes the two allocations the generic path costs per
-       * call: the `{ result, rollback }` object and the `rollback` closure. On a
-       * graph with a bound selector per row those are the calls that dominate.
-       *
-       * The `delete` in the restore stays deliberately. Leaving the key behind as
-       * `undefined` would be cheaper — it avoids putting the caller's props object
-       * into dictionary mode — but it also changes the object's shape, and
-       * `useSelector` memoizes props shallowly: a props object that has grown an
-       * extra key never again compares equal to a freshly built one, so the
-       * memoization the binding exists to protect would be defeated.
-       */
-      if (keys.length === 1) {
-        const key = keys[0];
-        const value = source[key];
-
-        return (state, props) => {
-          const target = props as unknown as Record<string, unknown>;
-
-          if (typeof target !== 'object' || target === null) {
-            return selector(state, source as Parameters<typeof baseSelector>[1]);
-          }
-
-          const previous = target[key];
-
-          // A re-entrant call that finds the binding already applied has nothing to
-          // save and nothing to restore.
-          if (previous === value) {
-            return selector(state, props as Parameters<typeof baseSelector>[1]);
-          }
-
-          const had = Object.prototype.hasOwnProperty.call(target, key);
-          target[key] = value;
-
-          try {
-            return selector(state, props as Parameters<typeof baseSelector>[1]);
-          } finally {
-            if (had) {
-              target[key] = previous;
-            } else {
-              delete target[key];
-            }
-          }
-        };
-      }
-
-      return (state, props) => {
-        const { result: nextProps, rollback } = temporaryAssign(props, source);
-        const result = selector(state, nextProps as Parameters<typeof baseSelector>[1]);
-        rollback();
-        return result;
-      };
-    },
-  });
 };
