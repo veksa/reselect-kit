@@ -43,6 +43,10 @@ export type ChainSelectorOptions<
  * that only reads `state` leaves `Params` empty, and one that reads props adds
  * them — so a step introducing props makes them required for the whole built
  * selector, whether or not the base selector had any.
+ *
+ * `Params` defaults to empty on the entry point, so that
+ * `createChainSelector<State, Result>(selector)` keeps working for callers that
+ * spell the type arguments out.
  */
 interface ChainSelectorResult<S1, R1, Params extends readonly any[]> {
   chain: <S2, R2, Params2 extends readonly any[]>(
@@ -58,7 +62,7 @@ interface ChainSelectorResult<S1, R1, Params extends readonly any[]> {
   };
 }
 
-export function createChainSelector<S1, R1, Params extends readonly any[]>(
+export function createChainSelector<S1, R1, Params extends readonly any[] = []>(
   selector: (state: S1, ...params: Params) => R1,
   options?: ChainSelectorOptions,
   prevChain?: SelectorChainHierarchy<any, any>,

@@ -19,12 +19,14 @@ type SelectorCache = {
  * takes nothing but `state`, so the props argument is required exactly when the
  * selector declares one. `NoInfer` keeps the props argument out of that
  * inference -- otherwise an inline object literal would widen `Params` instead
- * of being checked against what the selector declares.
+ * of being checked against what the selector declares. It defaults to empty so
+ * that `useSelector<State, Result>(selector)` -- the call site of the former
+ * plain overload -- keeps compiling without spelling the tuple out.
  *
  * Use {@link useSelectors} to read several selectors through a single store
  * subscription.
  */
-export function useSelector<S extends object, R, Params extends readonly any[]>(
+export function useSelector<S extends object, R, Params extends readonly any[] = []>(
   selector: (state: S, ...params: Params) => R,
   ...params: NoInfer<Params>
 ): R;

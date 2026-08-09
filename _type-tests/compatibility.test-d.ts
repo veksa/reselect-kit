@@ -8,19 +8,22 @@ import {
   useSelectors,
 } from '../src/index';
 import { createSequenceSelector } from '../src/createSequenceSelector';
-import { Person, PersonProps, State } from './models';
+import { Person, PersonProps, PersonState, State } from './models';
 
 /**
  * Shapes the per-creator type tests do not reach: batches large enough to
  * stress the union-to-tuple conversion, selectors that are not object
- * literals, argument tuples that are not exactly `[Props]`, and the creators
- * feeding each other.
+ * literals, argument tuples that are not exactly `[Props]`, explicit type
+ * arguments, and the creators feeding each other.
  */
 
 const stateFixture: State = {
   persons: { data: {} },
   messages: { data: {} },
 };
+
+const getPersons = (state: State) => state.persons;
+const getPerson = (state: State, props: PersonProps) => state.persons.data[props.personId];
 
 // a batch far larger than a component would normally read still resolves every
 // field, and a single parametric member still makes props required
@@ -125,3 +128,21 @@ const getPersonName = createPathSelector(
 ).name();
 
 expectTypeOf(useSelector(getPersonName, { personId: 1 })).toEqualTypeOf<string>();
+
+// spelling the type arguments out still works for a plain selector: the
+// argument tuple defaults to empty rather than having to be written as `[]`
+const explicitPath = createPathSelector<State, PersonState>(getPersons);
+expectTypeOf(explicitPath.data()(stateFixture)).toEqualTypeOf<Record<number, Person>>();
+
+const explicitChain = createChainSelector<State, PersonState>(getPersons)
+  .map((persons) => persons.currentPersonId ?? 0)
+  .build();
+expectTypeOf(explicitChain(stateFixture)).toEqualTypeOf<number>();
+
+expectTypeOf(useSelector<State, PersonState>(getPersons)).toEqualTypeOf<PersonState>();
+
+// the tuple can also be given explicitly, which is how a parametric selector is
+// spelled out now that props are one entry of it rather than a type of their own
+expectTypeOf(
+  useSelector<State, Person, [PersonProps]>(getPerson, { personId: 1 }),
+).toEqualTypeOf<Person>();

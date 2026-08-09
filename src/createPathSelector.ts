@@ -162,9 +162,11 @@ export const innerCreatePathSelector = (
  *
  * `Params` is inferred straight from the base selector, so the plain and the
  * parametric case share one signature — and one set of builder types — instead
- * of being told apart by a conditional in the parameter position.
+ * of being told apart by a conditional in the parameter position. It defaults
+ * to empty so that `createPathSelector<State, Result>(selector)` keeps working
+ * for callers that spell the type arguments out.
  */
-export function createPathSelector<S, R, Params extends readonly any[]>(
+export function createPathSelector<S, R, Params extends readonly any[] = []>(
   baseSelector: (state: S, ...params: Params) => R,
 ): IsOptional<R> extends true
   ? OptionalPathSelectorType<S, R, Params, [typeof baseSelector]>
