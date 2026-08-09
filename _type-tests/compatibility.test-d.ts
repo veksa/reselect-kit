@@ -4,10 +4,10 @@ import {
   createCachedStructuredSelector,
   createChainSelector,
   createPathSelector,
+  createSequenceSelector,
   useSelector,
   useSelectors,
 } from '../src/index';
-import { createSequenceSelector } from '../src/createSequenceSelector';
 import { Person, PersonProps, PersonState, State } from './models';
 
 /**

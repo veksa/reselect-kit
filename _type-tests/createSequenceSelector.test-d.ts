@@ -1,7 +1,7 @@
 import { expectTypeOf } from 'expect-type';
 import { createSelector } from '@veksa/reselect';
 import { Selector } from '@veksa/reselect';
-import { createSequenceSelector } from '../src/createSequenceSelector';
+import { createSequenceSelector } from '../src/index';
 import { Person, PersonProps, State } from './models';
 
 const stateFixture: State = {
