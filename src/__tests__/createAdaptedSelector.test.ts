@@ -2,7 +2,7 @@ import { createCachedSelector } from '@veksa/re-reselect';
 import { commonState, State } from '../__data__/state';
 import { createAdaptedSelector } from '../createAdaptedSelector';
 import { createStructuredSelector } from '../createStructuredSelector';
-import { NamedParametricSelector } from '../types';
+import { NamedSelector } from '../types';
 import { isCachedSelector } from '../_helpers/isCachedSelector';
 
 vi.mock('../debug/debug', async (importOriginal) => ({
@@ -54,9 +54,8 @@ describe('createAdaptedSelector', () => {
       person: personAdaptedSelector,
       message: messageAdaptedSelector,
     });
-    (
-      personAndMessageNamedSelector as NamedParametricSelector<unknown, unknown, unknown>
-    ).selectorName = 'personAndMessageNamedSelector';
+    (personAndMessageNamedSelector as NamedSelector<unknown, unknown, [unknown]>).selectorName =
+      'personAndMessageNamedSelector';
 
     const personAndMessageAdaptedSelector = createAdaptedSelector(
       personAndMessageNamedSelector,

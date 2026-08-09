@@ -9,7 +9,7 @@ import { createKeySelectorCreator } from '../keys/createKeySelectorCreator';
 import { stringComposeKeySelectors } from '../keys/stringComposeKeySelectors';
 import { arrayComposeKeySelectors } from '../keys/arrayComposeKeySelectors';
 import { createSequenceSelector } from '../createSequenceSelector';
-import { CachedSelector, NamedParametricSelector, NamedSelector } from '../types';
+import { CachedSelector, NamedSelector } from '../types';
 import { isCachedSelector } from '../_helpers/isCachedSelector';
 
 vi.mock('../debug/debug', async (importOriginal) => ({
@@ -458,9 +458,8 @@ describe('createChainSelector', () => {
       },
     );
 
-    (
-      fullNameNamedSelector as NamedParametricSelector<unknown, unknown, unknown, unknown>
-    ).selectorName = 'fullNameNamedSelector';
+    (fullNameNamedSelector as NamedSelector<unknown, unknown, [unknown], unknown>).selectorName =
+      'fullNameNamedSelector';
 
     const personByMessageIdSelector: any = createChainSelector(messageSelector)
       .chain((message) => {

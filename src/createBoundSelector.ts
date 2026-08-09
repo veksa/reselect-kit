@@ -1,5 +1,4 @@
-import { Selector } from '@veksa/reselect';
-import { CachedSelector, NamedParametricSelector, NamedSelector } from './types';
+import { CachedSelector, NamedSelector } from './types';
 import { isComposedKeySelector, KeySelectorComposer } from './keys/createKeySelectorComposer';
 import { isPropSelector } from './createPropSelector';
 import { excludeDefaultSelectors } from './keys/createKeySelectorCreator';
@@ -28,25 +27,28 @@ const generateBindingName = <P extends object>(binding: P) => {
 };
 
 /**
- * The special type to prevent binding of non optional props on optional values
+ * The bound selector: what the binding did not supply is what is left to pass.
+ * A binding covering every prop leaves an empty argument tuple, which is what a
+ * plain selector is in the unified model — so one type covers both cases.
+ *
+ * The outer condition is the guard against binding a prop the base selector
+ * declares as optional with a value that is not.
  */
 export type BoundSelector<S, P2, P1 extends Partial<P2>, R> =
   P2 extends Pick<P1, keyof P2>
-    ? Exclude<keyof P1, keyof P2> extends never
-      ? NamedSelector<S, R>
-      : NamedParametricSelector<S, Omit<P1, keyof P2>, R>
+    ? NamedSelector<S, R, Exclude<keyof P1, keyof P2> extends never ? [] : [Omit<P1, keyof P2>]>
     : never;
 
 export type BoundSelectorOptions<S, P2, P1 extends Partial<P2>, R> = {
   bindingStrategy?: (
-    baseSelector: Selector<S, R, [P1]>,
+    baseSelector: (state: S, props: P1) => R,
     binding: P2,
-  ) => Selector<S, R, [Omit<P1, keyof P2>]>;
+  ) => (state: S, props: Omit<P1, keyof P2>) => R;
   keySelectorComposer?: KeySelectorComposer;
 };
 
 const innerCreateBoundSelector = <S, P2, P1 extends Partial<P2>, R>(
-  baseSelector: Selector<S, R, [P1]>,
+  baseSelector: (state: S, props: P1) => R,
   binding: P2,
 ) => {
   const boundSelector = (state: S, props: Omit<P1, keyof P2> | void) =>
@@ -55,11 +57,11 @@ const innerCreateBoundSelector = <S, P2, P1 extends Partial<P2>, R>(
       ...binding,
     } as unknown as P1);
 
-  return boundSelector as BoundSelector<S, P2, P1, R>;
+  return boundSelector as unknown as BoundSelector<S, P2, P1, R>;
 };
 
 const createBoundInnerSelector = <S, P2 extends object, P1 extends Partial<P2>, R, OR extends R>(
-  baseSelector: Selector<S, R, [P1]>,
+  baseSelector: (state: S, props: P1) => R,
   binding: P2,
   options: BoundSelectorOptions<S, P2, P1, OR> = {},
 ): BoundSelector<S, P2, P1, R> => {

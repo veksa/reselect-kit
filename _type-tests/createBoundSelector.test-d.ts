@@ -1,6 +1,6 @@
 import { expectTypeOf } from 'expect-type';
 import { Selector } from '@veksa/reselect';
-import { createBoundSelector } from '../src/index';
+import { createBoundSelector, useSelector } from '../src/index';
 import { Person, State } from './models';
 
 const stateFixture: State = {
@@ -47,3 +47,17 @@ expectTypeOf(boundWithOptions(stateFixture)).toEqualTypeOf<Person | undefined>()
 // the binding must be a subset of the selector props
 // @ts-expect-error - `unknownProp` is not a prop of the selector
 createBoundSelector(personSelector, { unknownProp: 1 });
+
+// binding every prop leaves an empty argument tuple rather than a selector that
+// still tolerates props
+// @ts-expect-error - nothing is left to pass once every prop is bound
+boundSelector(stateFixture, { personId: 1 });
+
+// @ts-expect-error - `messageId` is still required after binding `personId`
+partiallyBoundSelector(stateFixture);
+
+// either shape reads through the hook like any other selector
+expectTypeOf(useSelector(boundSelector)).toEqualTypeOf<Person | undefined>();
+expectTypeOf(useSelector(partiallyBoundSelector, { messageId: 100 })).toEqualTypeOf<
+  Person | undefined
+>();

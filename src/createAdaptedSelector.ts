@@ -1,5 +1,4 @@
-import { Selector } from '@veksa/reselect';
-import { CachedSelector, NamedParametricSelector } from './types';
+import { CachedSelector, NamedSelector } from './types';
 import { withDebugName } from './debug/withDebugName';
 import { getSelectorName } from './_helpers/getSelectorName';
 import { isCachedSelector } from './_helpers/isCachedSelector';
@@ -25,15 +24,20 @@ const generateMappingName = <P1 extends object, P2>(mapping: (props: P2) => P1) 
 
 const innerCreateAdaptedSelector =
   <S, P1, P2, R>(
-    baseSelector: Selector<S, R, [P1]>,
+    baseSelector: (state: S, props: P1) => R,
     mapping: (props: P2) => P1,
-  ): NamedParametricSelector<S, P2, R> =>
+  ): NamedSelector<S, R, [P2]> =>
   (state: S, props: P2) => {
     return baseSelector(state, mapping(props));
   };
 
+/**
+ * Rewrites the props a selector reads. Only the props argument changes: the
+ * adapted selector takes `[P2]` where the base took `[P1]`, which is the same
+ * argument tuple every other creator in the library carries.
+ */
 export const createAdaptedSelector = <S, P1 extends object, P2, R>(
-  baseSelector: Selector<S, R, [P1]>,
+  baseSelector: (state: S, props: P1) => R,
   mapping: (props: P2) => P1,
 ) => {
   const adaptedSelector = innerCreateAdaptedSelector(baseSelector, mapping);

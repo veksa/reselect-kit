@@ -29,12 +29,6 @@ export type NamedSelector<S, R, Params extends readonly any[] = [], D = unknown[
   dependencies?: D;
 };
 
-/**
- * Back-compat alias: a parametric selector is a {@link NamedSelector} whose
- * single extra argument is `Props`.
- */
-export type NamedParametricSelector<S, P, R, D = unknown[]> = NamedSelector<S, R, [P], D>;
-
 export type ReReselectSelector = OutputCachedSelector<SelectorArray, unknown>;
 
 export type CachedSelector = Pick<ReReselectSelector, 'cache' | 'keySelector'> &

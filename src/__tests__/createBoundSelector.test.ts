@@ -2,7 +2,7 @@ import { createCachedSelector } from '@veksa/re-reselect';
 import { commonState, State } from '../__data__/state';
 import { createBoundSelector } from '../createBoundSelector';
 import { createStructuredSelector } from '../createStructuredSelector';
-import { NamedParametricSelector } from '../types';
+import { NamedSelector } from '../types';
 import { createPropSelector } from '../createPropSelector';
 import { isComposedKeySelector } from '../keys/createKeySelectorComposer';
 import { stringComposeKeySelectors } from '../keys/stringComposeKeySelectors';
@@ -119,9 +119,8 @@ describe('createBoundSelector', () => {
       person: personSelector,
       message: messageSelector,
     });
-    (
-      personAndMessageNamedSelector as NamedParametricSelector<unknown, unknown, unknown>
-    ).selectorName = 'personAndMessageNamedSelector';
+    (personAndMessageNamedSelector as NamedSelector<unknown, unknown, [unknown]>).selectorName =
+      'personAndMessageNamedSelector';
 
     const marryAndHelloSelector = createBoundSelector(personAndMessageNamedSelector, {
       personId: 1,
