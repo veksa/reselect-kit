@@ -65,15 +65,32 @@ type SelectorsUnion<Selectors> = Selectors extends readonly AnySelector[]
 type StateOf<S> = S extends AnySelector ? Parameters<S>[0] : never;
 
 /**
- * The `props` argument of each selector in a union of them, or `never` for the
- * ones that take none. The argument tuple is matched rather than the signature:
- * a selector of `state` alone is assignable to one that also takes `props`, and
- * would otherwise contribute `unknown`.
+ * The `props` argument of the selectors in a union that require one, or `never`
+ * for the ones that take none. The argument tuple is matched rather than the
+ * signature: a selector of `state` alone is assignable to one that also takes
+ * `props`, and would otherwise contribute `unknown`.
  */
-type PropsOf<S> = S extends AnySelector
+type RequiredPropsOf<S> = S extends AnySelector
   ? Parameters<S> extends [any, infer Props, ...any[]]
     ? Props
     : never
+  : never;
+
+/**
+ * The `props` argument of the selectors in a union that accept one without
+ * requiring it. An optional argument does not match the tuple pattern above,
+ * which is why it needs a pattern of its own; `undefined` is what the optional
+ * marker contributes and is dropped, so that intersecting the props of the
+ * group does not collapse to `never`.
+ */
+type OptionalPropsOf<S> = S extends AnySelector
+  ? Parameters<S> extends [any, any, ...any[]]
+    ? never
+    : Parameters<S> extends [any, ...infer Rest]
+      ? Rest extends readonly []
+        ? never
+        : Exclude<Rest[0], undefined>
+      : never
   : never;
 
 /**
@@ -83,6 +100,20 @@ type PropsOf<S> = S extends AnySelector
 export type MergedState<Selectors> = Selectors extends readonly AnySelector[]
   ? GetStateFromSelectors<Selectors>
   : UnionToIntersection<StateOf<SelectorsUnion<Selectors>>>;
+
+/**
+ * The props of a union of selectors, as the argument tuple that reads all of
+ * them: empty when none takes props, optional when every selector that takes
+ * them declares them optional, required as soon as one selector requires them.
+ * The props themselves are intersected, so the argument satisfies each member.
+ */
+type UnionProps<Union, Required = RequiredPropsOf<Union>, Optional = OptionalPropsOf<Union>> = [
+  Required,
+] extends [never]
+  ? [Optional] extends [never]
+    ? []
+    : [props?: UnionToIntersection<Optional>]
+  : [props: UnionToIntersection<Required | Optional>];
 
 /**
  * The extra arguments the group takes beyond `state`: `[]` when no selector is
@@ -97,9 +128,7 @@ export type MergedState<Selectors> = Selectors extends readonly AnySelector[]
  */
 export type MergedParams<Selectors> = Selectors extends readonly AnySelector[]
   ? GetParamsFromSelectors<Selectors>
-  : [PropsOf<SelectorsUnion<Selectors>>] extends [never]
-    ? []
-    : [UnionToIntersection<PropsOf<SelectorsUnion<Selectors>>>];
+  : UnionProps<SelectorsUnion<Selectors>>;
 
 /**
  * The same element-wise merge as {@link MergedParams}, for two argument tuples

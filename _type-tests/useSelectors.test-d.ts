@@ -27,3 +27,25 @@ useSelectors({ persons: (state: State) => state.persons }, { personId: 1 });
 
 // @ts-expect-error - props are required when a selector is parametric
 useSelectors({ id: (state: State, props: PersonProps) => props.personId });
+
+// a selector that declares its props optional leaves them optional for the batch
+declare const optionalProps: (state: State, props?: PersonProps) => number;
+
+expectTypeOf(useSelectors({ value: optionalProps })).toEqualTypeOf<{ value: number }>();
+expectTypeOf(useSelectors({ value: optionalProps }, { personId: 1 })).toEqualTypeOf<{
+  value: number;
+}>();
+
+// one selector requiring props makes them required for the whole batch
+const mixed = useSelectors(
+  {
+    optional: optionalProps,
+    required: (state: State, props: PersonProps) => props.personId,
+  },
+  { personId: 1 },
+);
+
+expectTypeOf(mixed).toEqualTypeOf<{ optional: number; required: number }>();
+
+// @ts-expect-error - props are required once one selector of the batch requires them
+useSelectors({ optional: optionalProps, required: (s: State, p: PersonProps) => p.personId });

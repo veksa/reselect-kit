@@ -41,6 +41,19 @@ createCachedStructuredSelector({
   keySelector: (state, props) => props.messageId,
 });
 
+// a batch whose props are optional everywhere produces a selector that can be
+// read with or without them
+const optionalCachedSelector = createCachedStructuredSelector({
+  person: (state: State, props?: PersonProps) => state.persons.data[props?.personId ?? 0],
+})({
+  keySelector: (state, props) => props?.personId ?? 0,
+});
+
+expectTypeOf(optionalCachedSelector(stateFixture)).toEqualTypeOf<{ person: Person }>();
+expectTypeOf(optionalCachedSelector(stateFixture, { personId: 1 })).toEqualTypeOf<{
+  person: Person;
+}>();
+
 /** The literal numbers below `N`, used to build a batch with many distinct keys. */
 type Indices<N extends number, Acc extends number[] = []> = Acc['length'] extends N
   ? Acc[number]
