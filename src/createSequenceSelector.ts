@@ -1,14 +1,19 @@
-import { createSelector, Selector } from '@veksa/reselect';
+import { createSelector, Selector, SelectorResultArray } from '@veksa/reselect';
+import { AnySelector, MergedParams, MergedState } from './types';
 
-export function createSequenceSelector<S, R>(
-  selectors: Selector<S, R>[],
+/**
+ * Runs a group of selectors and collects their results positionally.
+ *
+ * The selectors are inferred as a tuple rather than an array, which is what
+ * makes the result a tuple of the individual result types and lets `state` and
+ * the extra arguments be merged per position. An array would collapse them into
+ * a union and resolve everything past `state` to `never`, which is why the
+ * plain and the parametric case used to need an overload each.
+ */
+export function createSequenceSelector<Selectors extends readonly AnySelector[]>(
+  selectors: [...Selectors],
   selectorCreator?: typeof createSelector,
-): Selector<S, R[]>;
-
-export function createSequenceSelector<S, P, R>(
-  selectors: Selector<S, R, [P]>[],
-  selectorCreator?: typeof createSelector,
-): Selector<S, R[], [P]>;
+): Selector<MergedState<Selectors>, SelectorResultArray<Selectors>, MergedParams<Selectors>>;
 
 export function createSequenceSelector(selectors: any, selectorCreator = createSelector) {
   return selectorCreator(selectors, (...results: unknown[]) => results);

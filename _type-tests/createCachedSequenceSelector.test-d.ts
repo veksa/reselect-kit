@@ -7,12 +7,20 @@ const stateFixture: State = {
   messages: { data: {} },
 };
 
-// parametric cached sequence selector returns an array of the results
-const cachedSequenceSelector = createCachedSequenceSelector<State, PersonProps, number>([
-  (state, props) => props.personId,
-  (state) => state.persons.currentPersonId ?? 0,
+// parametric cached sequence selector returns the results positionally
+const cachedSequenceSelector = createCachedSequenceSelector([
+  (state: State, props: PersonProps) => props.personId,
+  (state: State) => state.persons.currentPersonId ?? 0,
 ])({
   keySelector: (state, props) => props.personId,
 });
 
-expectTypeOf(cachedSequenceSelector(stateFixture, { personId: 1 })).toEqualTypeOf<number[]>();
+expectTypeOf(cachedSequenceSelector(stateFixture, { personId: 1 })).toEqualTypeOf<
+  [number, number]
+>();
+
+// the key selector is typed from the group, so its arguments are checked
+createCachedSequenceSelector([(state: State, props: PersonProps) => props.personId])({
+  // @ts-expect-error - `messageId` is not part of the group's props
+  keySelector: (state, props) => props.messageId,
+});

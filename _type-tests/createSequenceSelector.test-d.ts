@@ -2,34 +2,45 @@ import { expectTypeOf } from 'expect-type';
 import { createSelector } from '@veksa/reselect';
 import { Selector } from '@veksa/reselect';
 import { createSequenceSelector } from '../src/createSequenceSelector';
-import { PersonProps, State } from './models';
+import { Person, PersonProps, State } from './models';
 
 const stateFixture: State = {
   persons: { data: {} },
   messages: { data: {} },
 };
 
-// non-parametric sequence selector returns an array of results
-const getNumbers = createSequenceSelector<State, number>([
-  (state) => state.persons.currentPersonId ?? 0,
-  (state) => state.messages.currentMessageId ?? 0,
+// non-parametric sequence selector returns the results positionally
+const getNumbers = createSequenceSelector([
+  (state: State) => state.persons.currentPersonId ?? 0,
+  (state: State) => state.messages.currentMessageId ?? 0,
 ]);
 
-expectTypeOf(getNumbers).toEqualTypeOf<Selector<State, number[]>>();
-expectTypeOf(getNumbers(stateFixture)).toEqualTypeOf<number[]>();
+expectTypeOf(getNumbers).toExtend<Selector<State, [number, number]>>();
+expectTypeOf(getNumbers(stateFixture)).toEqualTypeOf<[number, number]>();
 
 // a custom selector creator can be provided
-const getNumbersWithCreator = createSequenceSelector<State, number>(
-  [(state) => state.persons.currentPersonId ?? 0],
+const getNumbersWithCreator = createSequenceSelector(
+  [(state: State) => state.persons.currentPersonId ?? 0],
   createSelector,
 );
-expectTypeOf(getNumbersWithCreator(stateFixture)).toEqualTypeOf<number[]>();
+expectTypeOf(getNumbersWithCreator(stateFixture)).toEqualTypeOf<[number]>();
 
 // parametric sequence selector keeps the props type
-const getParametricNumbers = createSequenceSelector<State, PersonProps, number>([
-  (state, props) => props.personId,
-  (state) => state.persons.currentPersonId ?? 0,
+const getParametricNumbers = createSequenceSelector([
+  (state: State, props: PersonProps) => props.personId,
+  (state: State) => state.persons.currentPersonId ?? 0,
 ]);
 
-expectTypeOf(getParametricNumbers).toEqualTypeOf<Selector<State, number[], [PersonProps]>>();
-expectTypeOf(getParametricNumbers(stateFixture, { personId: 1 })).toEqualTypeOf<number[]>();
+expectTypeOf(getParametricNumbers).toExtend<Selector<State, [number, number], [PersonProps]>>();
+expectTypeOf(getParametricNumbers(stateFixture, { personId: 1 })).toEqualTypeOf<[number, number]>();
+
+// the results keep their own types instead of collapsing into a common one
+const getMixed = createSequenceSelector([
+  (state: State, props: PersonProps) => state.persons.data[props.personId],
+  (state: State) => Object.keys(state.persons.data).length,
+]);
+
+expectTypeOf(getMixed(stateFixture, { personId: 1 })).toEqualTypeOf<[Person, number]>();
+
+// @ts-expect-error - props are required when a selector is parametric
+getParametricNumbers(stateFixture);
