@@ -68,6 +68,17 @@ expectTypeOf(useSelectors(namedBatch, { personId: 1 })).toEqualTypeOf<{
 declare const dynamicBatch: Record<string, (state: State) => number>;
 expectTypeOf(useSelectors(dynamicBatch)).toEqualTypeOf<Record<string, number>>();
 
+// merging the batch costs nothing per key, so its size is not bounded by what
+// the compiler will unfold
+const wideBatch = useSelectors(
+  {
+    ...({} as Record<`filler${number}`, (state: State) => number>),
+    id: (state: State, props: PersonProps) => props.personId,
+  },
+  { personId: 1 },
+);
+expectTypeOf(wideBatch.id).toEqualTypeOf<number>();
+
 // a selector whose props argument is optional can be read with or without them
 declare const optionalProps: (state: State, props?: PersonProps) => number;
 expectTypeOf(useSelector(optionalProps)).toEqualTypeOf<number>();

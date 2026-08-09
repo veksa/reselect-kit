@@ -10,7 +10,11 @@ import { MergedParams, MergedState, SelectorTuple } from './types';
  *
  * The input selectors reach `PolymorphicCachedOptions` as the ordered tuple
  * rather than an array, which is what lets re-reselect type the user-supplied
- * `keySelector` with the exact `(state, props)` of the batch.
+ * `keySelector` with the exact `(state, props)` of the batch. Recovering that
+ * order costs a type instantiation per key, so a selectors object of roughly
+ * fifty entries or more exceeds what the compiler will unfold — the same limit
+ * re-reselect's own `createStructuredCachedSelector` carries. The selector this
+ * returns is unaffected; only the options argument depends on the order.
  */
 export function createCachedStructuredSelector<M extends SelectorsObject>(
   selectors: M,

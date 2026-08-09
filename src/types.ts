@@ -83,8 +83,13 @@ export type ObjectValuesToTuple<
   : Result;
 
 /**
- * Normalises a group of selectors — an object or a tuple — into the tuple form
- * that {@link MergedState} and {@link MergedParams} merge over.
+ * Normalises a group of selectors — an object or a tuple — into tuple form.
+ *
+ * Reserved for the places that need the order itself, such as typing
+ * re-reselect's `keySelector` against the exact inputs. Merging `state` and the
+ * arguments does not: {@link TuplifyUnion} recurses once per key and gives up
+ * somewhere around fifty of them, and a batch of selectors has no reason to be
+ * capped at a size a component could plausibly reach.
  */
 export type SelectorTuple<Selectors> = Selectors extends readonly AnySelector[]
   ? Selectors
@@ -92,18 +97,52 @@ export type SelectorTuple<Selectors> = Selectors extends readonly AnySelector[]
     ? ObjectValuesToTuple<Selectors>
     : never;
 
+/** The values of a group of selectors, whether it is an object or a tuple. */
+type SelectorsUnion<Selectors> = Selectors extends readonly AnySelector[]
+  ? Selectors[number]
+  : Selectors[keyof Selectors];
+
+/**
+ * The `state` argument of each selector in a union of them. Distributed over
+ * the union rather than matched against it, so each member is read on its own.
+ */
+type StateOf<S> = S extends AnySelector ? Parameters<S>[0] : never;
+
+/**
+ * The `props` argument of each selector in a union of them, or `never` for the
+ * ones that take none. The argument tuple is matched rather than the signature:
+ * a selector of `state` alone is assignable to one that also takes `props`, and
+ * would otherwise contribute `unknown`.
+ */
+type PropsOf<S> = S extends AnySelector
+  ? Parameters<S> extends [any, infer Props, ...any[]]
+    ? Props
+    : never
+  : never;
+
 /**
  * The `state` every selector in the group accepts: the intersection of their
  * first arguments.
  */
-export type MergedState<Selectors> = GetStateFromSelectors<SelectorTuple<Selectors>>;
+export type MergedState<Selectors> = Selectors extends readonly AnySelector[]
+  ? GetStateFromSelectors<Selectors>
+  : UnionToIntersection<StateOf<SelectorsUnion<Selectors>>>;
 
 /**
- * The extra arguments the group takes beyond `state`, merged element-wise:
- * `[]` when no selector is parametric, `[Props]` when some are — with the
- * `Props` of every parametric selector intersected.
+ * The extra arguments the group takes beyond `state`: `[]` when no selector is
+ * parametric, `[Props]` when some are — with the `Props` of every parametric
+ * selector intersected.
+ *
+ * A tuple of selectors is merged position by position, so a selector taking
+ * more than `props` keeps its later arguments. An object is merged through the
+ * union of its values instead, which stops at `props` but costs nothing per
+ * key — see {@link SelectorTuple} for why the object cannot be tuplified here.
  */
-export type MergedParams<Selectors> = GetParamsFromSelectors<SelectorTuple<Selectors>>;
+export type MergedParams<Selectors> = Selectors extends readonly AnySelector[]
+  ? GetParamsFromSelectors<Selectors>
+  : [PropsOf<SelectorsUnion<Selectors>>] extends [never]
+    ? []
+    : [UnionToIntersection<PropsOf<SelectorsUnion<Selectors>>>];
 
 /**
  * The same element-wise merge as {@link MergedParams}, for two argument tuples
