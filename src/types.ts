@@ -53,50 +53,6 @@ export type UnionToIntersection<Union> = (
   ? Intersection
   : never;
 
-/** The last member of a union, used to peel a union apart one type at a time. */
-type LastOf<Union> =
-  UnionToIntersection<Union extends unknown ? () => Union : never> extends () => infer Last
-    ? Last
-    : never;
-
-/** Turns a union into a tuple by repeatedly peeling off its last member. */
-type TuplifyUnion<
-  Union,
-  Last = LastOf<Union>,
-  IsDone = [Union] extends [never] ? true : false,
-> = true extends IsDone ? [] : [...TuplifyUnion<Exclude<Union, Last>>, Last];
-
-/**
- * Type-level `Object.values()`: `{ foo: Selector, bar: Selector }` becomes the
- * ordered tuple `[Selector, Selector]`.
- *
- * The tuple is what reselect's parameter merging needs: an unordered
- * `Array<M[keyof M]>` collapses the selectors into a union and loses the
- * per-position arguments, so `props` resolves to `never`.
- */
-export type ObjectValuesToTuple<
-  M extends Record<string, AnySelector>,
-  Keys extends any[] = TuplifyUnion<keyof M>,
-  Result extends AnySelector[] = [],
-> = Keys extends [infer Key, ...infer Rest]
-  ? ObjectValuesToTuple<M, Rest, [...Result, M[Key & keyof M]]>
-  : Result;
-
-/**
- * Normalises a group of selectors — an object or a tuple — into tuple form.
- *
- * Reserved for the places that need the order itself, such as typing
- * re-reselect's `keySelector` against the exact inputs. Merging `state` and the
- * arguments does not: {@link TuplifyUnion} recurses once per key and gives up
- * somewhere around fifty of them, and a batch of selectors has no reason to be
- * capped at a size a component could plausibly reach.
- */
-export type SelectorTuple<Selectors> = Selectors extends readonly AnySelector[]
-  ? Selectors
-  : Selectors extends Record<string, AnySelector>
-    ? ObjectValuesToTuple<Selectors>
-    : never;
-
 /** The values of a group of selectors, whether it is an object or a tuple. */
 type SelectorsUnion<Selectors> = Selectors extends readonly AnySelector[]
   ? Selectors[number]
@@ -136,7 +92,8 @@ export type MergedState<Selectors> = Selectors extends readonly AnySelector[]
  * A tuple of selectors is merged position by position, so a selector taking
  * more than `props` keeps its later arguments. An object is merged through the
  * union of its values instead, which stops at `props` but costs nothing per
- * key — see {@link SelectorTuple} for why the object cannot be tuplified here.
+ * key: the keys carry no order worth recovering, and a batch of selectors has
+ * no reason to be capped at a size a component could plausibly reach.
  */
 export type MergedParams<Selectors> = Selectors extends readonly AnySelector[]
   ? GetParamsFromSelectors<Selectors>

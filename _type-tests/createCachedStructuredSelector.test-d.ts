@@ -40,3 +40,22 @@ createCachedStructuredSelector({
   // @ts-expect-error - `messageId` is not part of the batch's props
   keySelector: (state, props) => props.messageId,
 });
+
+/** The literal numbers below `N`, used to build a batch with many distinct keys. */
+type Indices<N extends number, Acc extends number[] = []> = Acc['length'] extends N
+  ? Acc[number]
+  : Indices<N, [...Acc, Acc['length']]>;
+
+type WideBatch = Record<`field${Indices<60>}`, (state: State, props: PersonProps) => number>;
+
+declare const wideBatch: WideBatch;
+
+// the batch is merged rather than put back in key order, so neither the result
+// nor the key selector is capped by what the compiler will unfold per key
+const wideCachedSelector = createCachedStructuredSelector(wideBatch)({
+  keySelector: (state, props) => props.personId,
+});
+
+expectTypeOf(wideCachedSelector(stateFixture, { personId: 1 })).toEqualTypeOf<
+  Record<`field${Indices<60>}`, number>
+>();
