@@ -449,6 +449,11 @@ createCachedStructuredSelector(selectors)({ keySelector });
 The key selector is typed from the batch, so its `state` and props are the ones
 the batch reads.
 
+The second call needs a way to derive the key: a `keySelector`, given on its own
+or inside the options, or a `keySelectorCreator` that produces one. re-reselect
+types both as optional, so an options object carrying neither compiles and then
+throws on the first read.
+
 #### createEmptySelector
 
 Creates a selector that always returns `undefined` regardless of input. Useful as a placeholder or for conditional selection logic.
@@ -545,6 +550,10 @@ props, required as soon as one requires them, and optional when every selector
 that reads props declares them optional. The props of the batch are intersected,
 so one object satisfies every member.
 
+Every member is read as `selector(state, props)`, so a selector that requires a
+third argument does not belong in a batch — the batch has nothing to pass for it
+and it arrives as `undefined`.
+
 Seven `useSelector` calls in a row component mean seven store listeners, seven
 `useSyncExternalStore` instances and seven snapshot comparisons per dispatch;
 `useSelectors` collapses them into one of each. The result object keeps its
@@ -628,7 +637,8 @@ composition drops it, so a chain whose key cannot vary carries no cache at all.
 #### ChainSelectorOptions
 
 The options every chain level accepts, either on `createChainSelector` itself or
-per `chain` / `map` call.
+per `chain` / `map` call. A per-level object overrides what the chain was created
+with, and the merged result carries to the levels after it.
 
 ```typescript
 type ChainSelectorOptions = {
@@ -658,12 +668,17 @@ setDebugMode(process.env.NODE_ENV !== 'production');
 
 Implements a hierarchical cache structure for nested key support. Unlike flat cache objects, TreeCache allows for efficiently caching and retrieving selectors with complex, multi-part keys.
 
+Pair it with [arrayComposeKeySelectors](#arraycomposekeyselectors), which is what
+produces the multi-part keys it exists for.
+
 ```typescript
+import { FlatObjectCache } from '@veksa/re-reselect';
 import { TreeCache } from 'reselect-kit';
 
-// Create a TreeCache instance
+// The options object is required; `cacheObjectCreator` inside it is not, and
+// defaults to a FlatObjectCache per level
 const cache = new TreeCache({
-  cacheObjectCreator: () => new FlatObjectCache(), // Optional custom cache factory
+  cacheObjectCreator: () => new FlatObjectCache(),
 });
 
 // Use with complex keys (automatically normalized to arrays)
@@ -688,6 +703,11 @@ const cache = new IntervalMapCache();
 // Items not accessed within the cache lifetime will be automatically purged
 cache.set('key', selectorData);
 ```
+
+The sweep runs on a 10-second interval and evicts entries untouched for that
+long; reading an entry refreshes it. `initGarbageCollector` schedules through
+`window`, so it is a no-op where there is none — on the server the cache simply
+keeps what it is given. Calling it more than once does not stack collectors.
 
 ### Comparing with @veksa/reselect and @veksa/re-reselect
 
