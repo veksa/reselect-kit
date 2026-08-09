@@ -104,3 +104,18 @@ export type MergedState<Selectors> = GetStateFromSelectors<SelectorTuple<Selecto
  * `Props` of every parametric selector intersected.
  */
 export type MergedParams<Selectors> = GetParamsFromSelectors<SelectorTuple<Selectors>>;
+
+/**
+ * The same element-wise merge as {@link MergedParams}, for two argument tuples
+ * that are already known — the case of a step-by-step composition, where each
+ * step adds its own arguments to what the previous steps require.
+ */
+export type MergeParams<A extends readonly any[], B extends readonly any[]> = A extends readonly []
+  ? B
+  : B extends readonly []
+    ? A
+    : A extends readonly [infer AHead, ...infer ATail]
+      ? B extends readonly [infer BHead, ...infer BTail]
+        ? [AHead & BHead, ...MergeParams<ATail, BTail>]
+        : A
+      : B;

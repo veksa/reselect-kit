@@ -5,24 +5,25 @@ import { isCachedSelector } from './_helpers/isCachedSelector';
 import { defaultKeySelector } from './keys/defaultKeySelector';
 import { stringComposeKeySelectors } from './keys/stringComposeKeySelectors';
 import { createKeySelectorCreator } from './keys/createKeySelectorCreator';
+import { MergeParams } from './types';
 import { runInDebug, withDebugName } from './debug/withDebugName';
 import { defineDynamicSelectorName } from './_helpers/defineDynamicSelectorName';
 import { getSelectorName } from './_helpers/getSelectorName';
 import { generateSelectorKey } from './_helpers/generateSelectorKey';
 import { stringifyFunction } from './_helpers/stringifyFunction';
 
-export type SelectorChain<R1, S1, R2> = (result: R1) => Selector<S1, R2>;
-
-export type ParametricSelectorChain<R1, S1, P1, R2> = (result: R1) => Selector<S1, R2, [P1]>;
+/**
+ * A chain step: given the previous level's result, it returns the selector the
+ * next level reads. `Params` is empty for a step that only needs `state`, so a
+ * single type covers what used to be a plain and a parametric variant.
+ */
+export type SelectorChain<R1, S1, R2, Params extends readonly any[] = []> = (
+  result: R1,
+) => Selector<S1, R2, Params>;
 
 export type SelectorChainHierarchy<
-  C extends SelectorChain<any, any, any>,
+  C extends SelectorChain<any, any, any, any>,
   H extends SelectorChainHierarchy<any, any>,
-> = C & { parentChain?: H };
-
-export type ParametricSelectorChainHierarchy<
-  C extends ParametricSelectorChain<any, any, any, any>,
-  H extends ParametricSelectorChainHierarchy<any, any>,
 > = C & { parentChain?: H };
 
 export type CreateSelectorOptions<SelectorCreator extends typeof createSelectorCreator> = {
@@ -37,52 +38,38 @@ export type ChainSelectorOptions<
   keySelectorComposer?: KeySelectorComposer;
 };
 
-interface ChainSelectorResult<S1, R1> {
-  chain: <S2, R2 = any>(
-    fn: SelectorChain<R1, S2, R2>,
+/**
+ * Every level of the chain carries the arguments its selector needs. A level
+ * that only reads `state` leaves `Params` empty, and one that reads props adds
+ * them — so a step introducing props makes them required for the whole built
+ * selector, whether or not the base selector had any.
+ */
+interface ChainSelectorResult<S1, R1, Params extends readonly any[]> {
+  chain: <S2, R2, Params2 extends readonly any[]>(
+    fn: (result: R1) => (state: S2, ...params: Params2) => R2,
     chainOptions?: ChainSelectorOptions,
-  ) => ChainSelectorResult<S1 & S2, R2>;
+  ) => ChainSelectorResult<S1 & S2, R2, MergeParams<Params, Params2>>;
   map: <R2>(
     fn: (result: R1) => R2,
     mapOptions?: ChainSelectorOptions,
-  ) => ChainSelectorResult<S1, R2>;
-  build: () => Selector<S1, R1, []> & {
+  ) => ChainSelectorResult<S1, R2, Params>;
+  build: () => Selector<S1, R1, Params> & {
     chainHierarchy: SelectorChainHierarchy<any, any> | undefined;
   };
 }
 
-interface ParametricChainSelectorResult<S1, P1, R1> {
-  chain: <S2, P2 = unknown, R2 = any>(
-    fn: ParametricSelectorChain<R1, S2, P2, R2>,
-    chainOptions?: ChainSelectorOptions,
-  ) => ParametricChainSelectorResult<S1 & S2, P1 & P2, R2>;
-  map: <R2>(
-    fn: (result: R1) => R2,
-    mapOptions?: ChainSelectorOptions,
-  ) => ParametricChainSelectorResult<S1, P1, R2>;
-  build: () => Selector<S1, R1, [P1]> & {
-    chainHierarchy: ParametricSelectorChainHierarchy<any, any> | undefined;
-  };
-}
-
-export function createChainSelector<S1, R1>(
-  selector: Selector<S1, R1>,
+export function createChainSelector<S1, R1, Params extends readonly any[]>(
+  selector: (state: S1, ...params: Params) => R1,
   options?: ChainSelectorOptions,
   prevChain?: SelectorChainHierarchy<any, any>,
-): ChainSelectorResult<S1, R1>;
+): ChainSelectorResult<S1, R1, Params>;
 
-export function createChainSelector<S1, P1, R1>(
-  selector: Selector<S1, R1, [P1]>,
-  options?: ChainSelectorOptions,
-  prevChain?: ParametricSelectorChainHierarchy<any, any>,
-): ParametricChainSelectorResult<S1, P1, R1>;
-
-export function createChainSelector<S1, P1, R1>(
+export function createChainSelector(
   selector: any,
   options?: ChainSelectorOptions,
   prevChain?: any,
 ): any {
-  const createLevel = <S2, P2, R2>(
+  const createLevel = (
     fn: any,
     chainOptions: ChainSelectorOptions | undefined,
     isDerivedKeyless: boolean,
@@ -129,13 +116,13 @@ export function createChainSelector<S1, P1, R1>(
       return `higher order for ${baseName} (${stringifyFunction(fn)})`;
     });
 
-    type CombineSelector = Selector<S1 & S2, R1 & R2, [P1 & P2]> & {
+    type CombineSelector = Selector<any, any, [any]> & {
       dependencies: any;
       cache?: ICacheObject;
-      keySelector?: KeySelector<S1 & S2>;
+      keySelector?: KeySelector<any>;
     };
 
-    const combinedSelector: CombineSelector = (state: S1 & S2, props: P1 & P2): R1 & R2 => {
+    const combinedSelector: CombineSelector = (state: any, props: any): any => {
       const derivedSelector: any = (higherOrderSelector as any)(state, props);
 
       runInDebug(() => {
@@ -185,7 +172,7 @@ export function createChainSelector<S1, P1, R1>(
        */
       const mapKeySelector = keySelectorCreator({
         inputSelectors: [higherOrderSelector],
-      }) as KeySelector<S1 & S2>;
+      }) as KeySelector<any>;
 
       if (mapKeySelector !== defaultKeySelector) {
         combinedSelector.keySelector = mapKeySelector;
@@ -206,9 +193,9 @@ export function createChainSelector<S1, P1, R1>(
        * object reference with different contents, and a reference-keyed cache would
        * hand back a stale selector.
        */
-      const derivedKeySelectors = new WeakMap<object, KeySelector<S1 & S2>>();
+      const derivedKeySelectors = new WeakMap<object, KeySelector<any>>();
 
-      combinedSelector.keySelector = (state: S1 & S2, props: P1 & P2) => {
+      combinedSelector.keySelector = (state: any, props: any) => {
         const derivedSelector: any = (higherOrderSelector as any)(state, props);
 
         let derivedKeySelector = derivedKeySelectors.get(derivedSelector);
@@ -216,7 +203,7 @@ export function createChainSelector<S1, P1, R1>(
         if (derivedKeySelector === undefined) {
           derivedKeySelector = keySelectorCreator({
             inputSelectors: [higherOrderSelector, derivedSelector],
-          }) as KeySelector<S1 & S2>;
+          }) as KeySelector<any>;
 
           derivedKeySelectors.set(derivedSelector, derivedKeySelector);
         }
@@ -235,19 +222,15 @@ export function createChainSelector<S1, P1, R1>(
       parentChain: prevChain,
     });
 
-    return createChainSelector<S1 & S2, P1 & P2, R1 & R2>(
-      combinedSelector,
-      combinedOptions,
-      nextPrevChain,
-    );
+    return createChainSelector(combinedSelector, combinedOptions, nextPrevChain);
   };
 
-  const chain = <S2, P2, R2>(fn: any, chainOptions?: ChainSelectorOptions) => {
-    return createLevel<S2, P2, R2>(fn, chainOptions, false);
+  const chain = (fn: any, chainOptions?: ChainSelectorOptions) => {
+    return createLevel(fn, chainOptions, false);
   };
 
-  const map = <R2>(fn: (result: R1) => R2, mapOptions?: ChainSelectorOptions) => {
-    const mapSelector = (result: R1) => {
+  const map = (fn: (result: any) => any, mapOptions?: ChainSelectorOptions) => {
+    const mapSelector = (result: any) => {
       const output = fn(result);
       const mapSelector = () => output;
 
@@ -260,7 +243,7 @@ export function createChainSelector<S1, P1, R1>(
       return mapSelector;
     };
 
-    return createLevel<S1, P1, R2>(mapSelector, mapOptions, true);
+    return createLevel(mapSelector, mapOptions, true);
   };
 
   const build = () => {

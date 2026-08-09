@@ -1,7 +1,7 @@
 import { expectTypeOf } from 'expect-type';
 import { Selector } from '@veksa/reselect';
 import { createChainSelector } from '../src/index';
-import { Person, PersonProps, State } from './models';
+import { Message, MessageProps, Person, PersonProps, State } from './models';
 
 const stateFixture: State = {
   persons: { data: {} },
@@ -45,3 +45,34 @@ const getPersonIdPlusOne = createChainSelector((state: State, props: PersonProps
   .build();
 
 expectTypeOf(getPersonIdPlusOne(stateFixture, { personId: 1 })).toEqualTypeOf<number>();
+
+// props introduced by a chained selector become required for the whole chain,
+// even when the base selector reads nothing but state
+const getRecentMessages = createChainSelector((state: State) => state.persons.currentPersonId ?? 0)
+  .chain(
+    (personId) => (state: State, props: { limit: number }) =>
+      Object.values(state.messages.data)
+        .filter((message) => message.personId === personId)
+        .slice(0, props.limit),
+  )
+  .build();
+
+expectTypeOf(getRecentMessages).toExtend<Selector<State, Message[], [{ limit: number }]>>();
+expectTypeOf(getRecentMessages(stateFixture, { limit: 5 })).toEqualTypeOf<Message[]>();
+
+// chaining intersects the props of every level that declares them
+const getPersonMessage = createChainSelector((state: State, props: PersonProps) => props.personId)
+  .chain(
+    (personId) => (state: State, props: MessageProps) =>
+      Object.values(state.messages.data).find(
+        (message) => message.personId === personId && message.id === props.messageId,
+      ),
+  )
+  .build();
+
+expectTypeOf(getPersonMessage).toExtend<
+  Selector<State, Message | undefined, [PersonProps & MessageProps]>
+>();
+
+// @ts-expect-error - the chained selector's props are required too
+getPersonMessage(stateFixture, { personId: 1 });
