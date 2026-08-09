@@ -41,6 +41,37 @@ npm install reselect-kit
 yarn add reselect-kit
 ```
 
+### Upgrading from 1.0.x
+
+Props are no longer a type parameter of their own: a selector is typed by the
+tuple of arguments it takes after `state`, and a parametric selector is simply
+one whose tuple is not empty. Call sites that let the types be inferred are
+unaffected. Ones that spell the type arguments out move the props into the tuple:
+
+```typescript
+// before
+useSelector<State, PersonProps, Person>(getPerson, { personId: 1 });
+createPathSelector<State, Person, PersonProps>(getPerson);
+createChainSelector<State, PersonProps, Person>(getPerson);
+
+// after
+useSelector<State, Person, [PersonProps]>(getPerson, { personId: 1 });
+createPathSelector<State, Person, [PersonProps]>(getPerson);
+createChainSelector<State, Person, [PersonProps]>(getPerson);
+```
+
+`createCachedSequenceSelector` infers everything from the array it is given, so
+its type arguments cannot be written out at all — annotate `state` in the
+selectors instead.
+
+Two more consequences of the same change:
+
+- a sequence returns a tuple of the individual result types rather than `R[]`,
+  which is what makes each position keep its own type;
+- a chain step that reads props now makes them required for the whole built
+  selector even when the base selector had none. That type used to be dropped,
+  so this surfaces as a new error on code that was already passing the props.
+
 ## Examples
 
 ### Comparing @veksa/reselect, @veksa/re-reselect, and reselect-kit
@@ -524,6 +555,102 @@ The trade-off against separate hooks is granularity: any tracked state segment
 changing re-runs the whole batch, which for memoized selectors is a cache hit
 per field. See [Reading a Batch of Selectors in a Component](#reading-a-batch-of-selectors-in-a-component)
 for how this compares with a structured selector.
+
+### Key Selectors
+
+#### stringComposeKeySelectors
+
+Composes several key selectors into one that joins their keys with `:`. The
+result carries its inputs as `dependencies`, which is what lets
+`createBoundSelector` drop the key selectors whose props it has bound.
+
+```typescript
+const keySelector = stringComposeKeySelectors(
+  (state, props) => props.userId,
+  (state, props) => props.view,
+);
+
+// keySelector(state, { userId: '123', view: 'details' }) returns '123:details'
+```
+
+#### arrayComposeKeySelectors
+
+The same composition, producing an array key instead of a string — for cache
+objects that take multi-part keys, such as [TreeCache](#treecache). Nested array
+keys are flattened.
+
+```typescript
+const keySelector = arrayComposeKeySelectors(
+  (state, props) => props.userId,
+  (state, props) => props.view,
+);
+
+// keySelector(state, { userId: '123', view: 'details' }) returns ['123', 'details']
+```
+
+#### createKeySelectorComposer
+
+Builds a composer of your own from a function that reduces N key selectors into
+one. Both composers above are built with it.
+
+```typescript
+const commaComposeKeySelectors = createKeySelectorComposer(
+  (...keySelectors) =>
+    (state, props) =>
+      keySelectors.map((keySelector) => keySelector(state, props)).join(),
+);
+```
+
+#### createKeySelectorCreator
+
+Builds the `keySelectorCreator` that re-reselect calls to derive a selector's key
+from its inputs: it collects the key selectors of every cached input, flattens
+already-composed ones, drops duplicates and the default key, and composes what is
+left with the given composer.
+
+```typescript
+const fullNameSelector = createCachedSelector(
+  [personByMessageIdSelector],
+  toFullName,
+)({
+  keySelectorCreator: createKeySelectorCreator(stringComposeKeySelectors),
+});
+```
+
+A chain builds its own creator from the `keySelectorComposer` it was given, so
+inside a chain the composer is what you configure, not the creator.
+
+#### defaultKeySelector
+
+The key of a selector that has nothing to key on — a single constant. Key
+composition drops it, so a chain whose key cannot vary carries no cache at all.
+
+#### ChainSelectorOptions
+
+The options every chain level accepts, either on `createChainSelector` itself or
+per `chain` / `map` call.
+
+```typescript
+type ChainSelectorOptions = {
+  // called per level, so each one gets its own cache object
+  createSelectorOptions?: () => { selectorCreator; cacheObject };
+  keySelectorComposer?: KeySelectorComposer;
+};
+```
+
+### Debugging
+
+#### setDebugMode / isDebugMode
+
+Debug mode makes every creator tag the selectors it builds with a readable
+`selectorName`, composed from the names of what they were built from. It is off
+by default, since the names cost string work on every build.
+
+```typescript
+import { setDebugMode } from 'reselect-kit';
+
+setDebugMode(process.env.NODE_ENV !== 'production');
+```
 
 ### Cache Objects
 
