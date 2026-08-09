@@ -28,7 +28,8 @@ A powerful toolkit that extends the capabilities of @veksa/reselect and @veksa/r
 
 ## Installation
 
-reselect-kit requires **TypeScript 5.8 or later**.
+reselect-kit requires **TypeScript 5.4 or later** — the floor the type tests run
+against on every commit, together with every minor up to 7.0.
 
 ### Using npm or yarn
 
@@ -102,11 +103,11 @@ import { createPathSelector } from 'reselect-kit';
 const getUser = createPathSelector((state) => state.user);
 
 // For parametric selectors
-const getUserByUserId = createPathSelector((state, userId) => state.users?.[userId]);
+const getUserByUserId = createPathSelector((state, props) => state.users?.[props.userId]);
 
-// Usage:
-const address = getUser(state).address(); // Safely returns undefined if path is broken
-const userAddress = getUserByUserId(state, '123').address(); // With parameters
+// Walking the path builds a selector; calling it reads the store
+const address = getUser.address()(state); // Safely returns undefined if path is broken
+const userAddress = getUserByUserId.address()(state, { userId: '123' }); // With parameters
 ```
 
 reselect-kit provides safer property access with path selectors that handle null/undefined values automatically.
@@ -187,13 +188,14 @@ const getUserByNameAndRole = createSelector(
   (users, userName, userRole) => users[userName][userRole],
 );
 
-const getAdmin = createAdaptedSelector(getUserByNameAndRole, (props) => ({
-  userName: props.userName,
+const getAdmin = createAdaptedSelector(getUserByNameAndRole, (props: { name: string }) => ({
+  userName: props.name,
   userRole: 'admin',
 }));
 
-// Usage:
-const admin = getAdmin(state); // Same as getUserByName(state, {userName: 'admin'})
+// Usage: the adapted selector takes the props the mapping accepts
+const admin = getAdmin(state, { name: 'alice' });
+// Same as getUserByNameAndRole(state, {userName: 'alice', userRole: 'admin'})
 ```
 
 #### Chain Selectors
@@ -224,14 +226,13 @@ import { createCachedStructuredSelector } from 'reselect-kit';
 const getUserProfile = createCachedStructuredSelector({
   name: (state) => state.user.name,
   email: (state) => state.user.email,
-  address: createPathSelector(
-    (state) => state.user,
-    (user) => user?.contact?.address,
-  ),
-})((state, userId) => userId);
+  address: createPathSelector((state) => state.user).contact.address(),
+})({
+  keySelector: (state, props) => props.userId,
+});
 
 // Usage:
-const profile = getUserProfile(state, '123');
+const profile = getUserProfile(state, { userId: '123' });
 // Returns: { name: 'John', email: 'john@example.com', address: { ... } }
 ```
 
@@ -300,12 +301,18 @@ createChainSelector(baseSelector).map(transformFn).build();
 Transforms the output of the previous selector by creating a new selector based on its result. This is where the real power of chain selectors comes in, allowing composition of selectors where the output of one becomes the context for creating the next.
 
 ```typescript
-chain<S2, R2>(fn: (result: R1) => Selector<S2, R2>, options?: ChainSelectorOptions): SelectorMonad
-chain<S2, P2, R2>(fn: (result: R1) => Selector<S2, R2, [P2]>, options?: ChainSelectorOptions): SelectorMonad
+chain<S2, R2, Params2>(
+  fn: (result: R1) => (state: S2, ...params: Params2) => R2,
+  options?: ChainSelectorOptions,
+): ChainSelectorResult
 ```
 
 - **fn** - Function that receives the previous selector's result and returns a new selector
 - **options** - Optional configuration for caching and key selection
+
+A step reading props adds them to what the built selector requires, whether or
+not the base selector had any: the arguments of every level are merged rather
+than the level having to match the base.
 
 **Examples:**
 
@@ -374,35 +381,42 @@ build(): Selector<S, R, Params>
 
 #### createPathSelector
 
-Creates a selector that safely accesses nested properties.
+Creates a selector that safely accesses nested properties. Property access walks
+the path and the call terminates it, producing the selector.
 
 ```typescript
-createPathSelector(sourceSelector, pathFn);
+createPathSelector(sourceSelector).some.nested.path();
 ```
 
 #### createBoundSelector
 
-Creates a selector with predefined parameters.
+Creates a selector with predefined props. Whatever the binding does not supply
+stays required; a binding covering every prop leaves a plain selector.
 
 ```typescript
-createBoundSelector(selector, getParams);
+createBoundSelector(selector, binding);
 ```
 
 #### createAdaptedSelector
 
-Adapts a selector to work with a different parameter shape.
+Adapts a selector to work with a different props shape. The adapted selector
+takes the props the mapping accepts, in place of the ones the base selector reads.
 
 ```typescript
-createAdaptedSelector(selector, paramsAdapter);
+createAdaptedSelector(selector, propsAdapter);
 ```
 
 #### createCachedStructuredSelector
 
-Creates a structured selector with caching support.
+Creates a structured selector with caching support. The second call takes either
+re-reselect's options object or the key selector on its own.
 
 ```typescript
-createCachedStructuredSelector(selectors)(keySelector);
+createCachedStructuredSelector(selectors)({ keySelector });
 ```
+
+The key selector is typed from the batch, so its `state` and props are the ones
+the batch reads.
 
 #### createEmptySelector
 
@@ -410,7 +424,8 @@ Creates a selector that always returns `undefined` regardless of input. Useful a
 
 ```typescript
 const emptySelector = createEmptySelector(baseSelector);
-// Always returns undefined while maintaining the original selector's signature
+// Always returns undefined; the result widens to `R | undefined` and the
+// selector takes whatever arguments it is called with
 ```
 
 #### createPropSelector
@@ -423,12 +438,7 @@ const propSelector = createPropSelector();
 
 // In a chain
 const userByIdSelector = createChainSelector(propSelector)
-  .chain((props) =>
-    createPathSelector(
-      (state) => state.users[props.userId],
-      (user) => user,
-    ),
-  )
+  .chain((props) => createPathSelector((state) => state.users[props.userId]).profile())
   .build();
 ```
 
@@ -445,7 +455,10 @@ const getUserSettings = createSegmentSelector(
 
 #### createSequenceSelector
 
-Creates a selector that returns an array of results from multiple selectors.
+Runs a group of selectors and collects their results positionally. The result is
+a tuple of the individual result types, and `state` and the extra arguments are
+merged across the group, so a single parametric member makes props required for
+the whole sequence.
 
 ```typescript
 const getUserStats = createSequenceSelector([
@@ -454,7 +467,23 @@ const getUserStats = createSequenceSelector([
   (state) => state.user.likesCount,
 ]);
 
-// Returns [postsCount, followersCount, likesCount]
+// getUserStats(state) returns [postsCount, followersCount, likesCount]
+```
+
+#### createCachedSequenceSelector
+
+The cached counterpart of `createSequenceSelector`: the second call takes
+re-reselect's options, with the key selector typed from the group.
+
+```typescript
+const getPostStats = createCachedSequenceSelector([
+  (state, props) => state.posts[props.postId].likes,
+  (state, props) => state.posts[props.postId].comments,
+])({
+  keySelector: (state, props) => props.postId,
+});
+
+// getPostStats(state, { postId: 1 }) returns [likes, comments]
 ```
 
 ### Hooks
@@ -479,6 +508,11 @@ const { symbol, bid, ask } = useSelectors(
   { symbol },
 );
 ```
+
+The props argument follows the batch: it is rejected when no selector takes
+props, required as soon as one requires them, and optional when every selector
+that reads props declares them optional. The props of the batch are intersected,
+so one object satisfies every member.
 
 Seven `useSelector` calls in a row component mean seven store listeners, seven
 `useSyncExternalStore` instances and seven snapshot comparisons per dispatch;
