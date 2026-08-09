@@ -36,6 +36,17 @@ describe('IntervalMapCache', () => {
     expect(cache.get('missing')).toBeUndefined();
   });
 
+  test('overwrites the value of a key that is already present', () => {
+    const cache = new IntervalMapCache();
+    const first = { value: 1 };
+    const second = { value: 2 };
+
+    cache.set('key', first);
+    cache.set('key', second);
+
+    expect(cache.get('key')).toBe(second);
+  });
+
   test('removes a value by key', () => {
     const cache = new IntervalMapCache();
 

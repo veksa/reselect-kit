@@ -489,6 +489,20 @@ describe('createChainSelector', () => {
     );
   });
 
+  test('should let an assigned selector name win over the generated one', () => {
+    const personIdSelector: any = createChainSelector(messageSelector)
+      .map((message) => message.personId)
+      .build();
+
+    expect(personIdSelector.selectorName).toContain('messageSelector');
+
+    // The generated name is exposed through a getter, and the matching setter is
+    // what lets a caller pin a readable name on a built chain.
+    personIdSelector.selectorName = 'personIdSelector';
+
+    expect(personIdSelector.selectorName).toBe('personIdSelector');
+  });
+
   test('should build selector with chainHierarchy property for unit test', () => {
     type FirstState = { firstValue: string };
 

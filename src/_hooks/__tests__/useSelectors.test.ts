@@ -114,6 +114,28 @@ describe('useSelectors', () => {
     expect(result.current).toBe(first);
   });
 
+  test('keeps the result object when a tracked change leaves every value equal', async () => {
+    const store = createMockStore(initialState);
+    const bid = vi.fn(selectBid);
+    const ask = vi.fn(selectAsk);
+
+    const { result } = renderHook(() => useSelectors({ bid, ask }, { symbol: 'EURUSD' }), {
+      wrapper: wrapperWith(store),
+    });
+
+    const first = result.current;
+    const callsAfterMount = bid.mock.calls.length;
+
+    // A new `quotes` object holding the same numbers: the batch re-runs, because
+    // the segment it reads changed identity, but nothing it produced did — so
+    // the previous result object is handed back rather than an equal new one.
+    await dispatch(store, { ...initialState, quotes: { EURUSD: { bid: 1, ask: 2 } } });
+
+    expect(bid.mock.calls.length).toBeGreaterThan(callsAfterMount);
+    expect(ask.mock.calls.length).toBeGreaterThan(callsAfterMount);
+    expect(result.current).toBe(first);
+  });
+
   test('rebuilds the result when a single field changes', async () => {
     const store = createMockStore(initialState);
 

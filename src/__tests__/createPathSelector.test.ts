@@ -52,6 +52,20 @@ describe('createPathSelector', () => {
     expect(nameSelector({})).toBe('default');
   });
 
+  test('should forward every argument the base selector declares', () => {
+    const baseSelector = (state: State, props: { id: number }, offset: number) => ({
+      messageId: (state.documents[props.id]?.messageId ?? 0) + offset,
+    });
+
+    const messageIdSelector = createPathSelector(baseSelector).messageId();
+
+    // One and two arguments are dispatched directly; anything else goes through
+    // the generic path, which has to pass the whole argument list on.
+    expect(messageIdSelector(commonState, { id: 1 }, 1000)).toBe(
+      (commonState.documents[1]?.messageId ?? 0) + 1000,
+    );
+  });
+
   describe('integration with re-reselect', () => {
     test('should expose keySelector if base selector is cached', () => {
       const personSelector = createCachedSelector(
