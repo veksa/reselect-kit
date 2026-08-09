@@ -14,14 +14,19 @@ type SelectorCache = {
  * Reads one selector from the store. Props are compared shallowly, so an inline
  * object literal does not invalidate the selector on every render.
  *
+ * A single variadic signature covers both the plain and the parametric case:
+ * `Params` is inferred from the selector itself and is empty when the selector
+ * takes nothing but `state`, so the props argument is required exactly when the
+ * selector declares one. `NoInfer` keeps the props argument out of that
+ * inference -- otherwise an inline object literal would widen `Params` instead
+ * of being checked against what the selector declares.
+ *
  * Use {@link useSelectors} to read several selectors through a single store
  * subscription.
  */
-export function useSelector<S extends object, R>(selector: (state: S) => R): R;
-
-export function useSelector<S extends object, P, R>(
-  selector: (state: S, props: P) => R,
-  props: P,
+export function useSelector<S extends object, R, Params extends readonly any[]>(
+  selector: (state: S, ...params: Params) => R,
+  ...params: NoInfer<Params>
 ): R;
 
 export function useSelector(selector: Function, ...params: any[]) {
