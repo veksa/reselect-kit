@@ -235,15 +235,21 @@ describe('createBoundSelector', () => {
     const secondPropSelector = createPropSelector<{
       value2: number;
     }>().value2();
+    const thirdPropSelector = createPropSelector<{
+      value3: number;
+    }>().value3();
 
     const selector = createCachedSelector([], () => {})({
       keySelector: stringComposeKeySelectors(
         firstPropSelector,
         secondPropSelector,
+        thirdPropSelector,
         defaultKeySelector,
       ),
     });
 
+    // `value3` is bound, so it drops out of the composed key alongside the
+    // default one, leaving the two props the key still reads.
     const boundSelector = createBoundSelector(selector, {
       value3: 3,
     });
