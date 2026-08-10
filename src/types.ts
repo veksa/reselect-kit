@@ -149,3 +149,17 @@ export type MergeParams<A extends readonly any[], B extends readonly any[]> = A 
         ? [AHead & BHead, ...MergeParams<ATail, BTail>]
         : A
       : B;
+
+/**
+ * The arguments of a cached selector: the ones its inputs declare, widened by
+ * any the keySelector declares on top of them.
+ *
+ * A key that only reads what the inputs already declare leaves them exactly as
+ * they are. Merging in that case would be lossy rather than additive: an inline
+ * `keySelector` writes its parameter without a `?` even when the batch's own is
+ * optional, and intersecting the two would make the whole selector demand it.
+ */
+export type WithKeyParams<
+  InputParams extends readonly any[],
+  KeyParams extends readonly any[],
+> = KeyParams extends InputParams ? InputParams : MergeParams<InputParams, KeyParams>;

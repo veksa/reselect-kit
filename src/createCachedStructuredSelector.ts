@@ -1,7 +1,7 @@
 import { createSelector, Selector, SelectorResultsMap, SelectorsObject } from '@veksa/reselect';
 import { createCachedSelector, PolymorphicCachedOptions } from '@veksa/re-reselect';
 import { createStructuredSelector } from './createStructuredSelector';
-import { MergedParams, MergedState } from './types';
+import { MergedParams, MergedState, WithKeyParams } from './types';
 
 /**
  * The input selectors as re-reselect reads them when typing the caller's
@@ -23,9 +23,9 @@ type StructuredInputs<M extends SelectorsObject> = Selector<
  */
 export function createCachedStructuredSelector<M extends SelectorsObject>(
   selectors: M,
-): (
-  options: PolymorphicCachedOptions<StructuredInputs<M>, SelectorResultsMap<M>>,
-) => Selector<MergedState<M>, SelectorResultsMap<M>, MergedParams<M>>;
+): <KeyParams extends readonly any[] = MergedParams<M>>(
+  options: PolymorphicCachedOptions<StructuredInputs<M>, SelectorResultsMap<M>, KeyParams>,
+) => Selector<MergedState<M>, SelectorResultsMap<M>, WithKeyParams<MergedParams<M>, KeyParams>>;
 
 export function createCachedStructuredSelector(selectors: any): any {
   return createStructuredSelector(
