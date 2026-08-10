@@ -1115,12 +1115,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@veksa/re-reselect@npm:^5.1.3":
-  version: 5.1.3
-  resolution: "@veksa/re-reselect@npm:5.1.3"
+"@veksa/re-reselect@npm:^5.1.5":
+  version: 5.1.5
+  resolution: "@veksa/re-reselect@npm:5.1.5"
   peerDependencies:
-    "@veksa/reselect": ^5.2.0
-  checksum: 10/44f66ee59a7d2f0d20b8d2f39c32ccb64555d8a2d28b939056241669c0e6c877462fab0f7da936f80be5862b094af4e7ec8696b15b52f1d4316c3ebe7154f77e
+    "@veksa/reselect": ^5.2.2
+  checksum: 10/e7b6a6db3f96e517c871a65321ee3661599ff1e6d29d887a565b252c5adea9ca15aa25cc2abf4b32318cc2d4fc3144e9b4f28a1750da0603ce8e49e99ee75999
   languageName: node
   linkType: hard
 
@@ -1140,10 +1140,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@veksa/reselect@npm:^5.2.1":
-  version: 5.2.1
-  resolution: "@veksa/reselect@npm:5.2.1"
-  checksum: 10/a7e163f674402948cb0cfdd1efbe29fd8a192cafc93f22f9d07ba8943ace4e13be44eeb56bb5d9b07422b9e116bbe3b57e7a998b389c450feebb344bc0fdb9cf
+"@veksa/reselect@npm:^5.2.2":
+  version: 5.2.2
+  resolution: "@veksa/reselect@npm:5.2.2"
+  checksum: 10/05203a9fc9c76de3a6d3391d0bdcb6377632d0468f3456ded01010f2561965be18865708f49b3558c5b1e252871041fc783ccc19cdcc9b52a3280858b580870b
   languageName: node
   linkType: hard
 
@@ -3169,9 +3169,9 @@ __metadata:
     "@types/node": "npm:^24.0.3"
     "@types/react": "npm:^19.0.12"
     "@types/react-dom": "npm:^19.0.4"
-    "@veksa/re-reselect": "npm:^5.1.3"
+    "@veksa/re-reselect": "npm:^5.1.5"
     "@veksa/react-redux": "npm:^9.3.2"
-    "@veksa/reselect": "npm:^5.2.1"
+    "@veksa/reselect": "npm:^5.2.2"
     "@vitest/coverage-v8": "npm:^4.1.10"
     expect-type: "npm:^1.2.1"
     jsdom: "npm:^30.0.0"
@@ -3188,9 +3188,9 @@ __metadata:
     uuid: "npm:^14.0.1"
     vitest: "npm:^4.1.10"
   peerDependencies:
-    "@veksa/re-reselect": ^5.1.3
+    "@veksa/re-reselect": ^5.1.5
     "@veksa/react-redux": ^9.3.2
-    "@veksa/reselect": ^5.2.1
+    "@veksa/reselect": ^5.2.2
     react: ^19.0.0
     react-dom: ^19.0.0
   languageName: unknown
