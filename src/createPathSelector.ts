@@ -127,13 +127,20 @@ export const innerCreatePathSelector = (
         result = baseSelector.apply(null, arguments as unknown as unknown[]);
       }
 
-      for (let i = 0; i < pathLength && isObject(result); i += 1) {
+      for (let i = 0; i < pathLength; i += 1) {
+        if (!isObject(result)) {
+          // The path runs through `null`, `undefined` or a primitive, so the
+          // value it names doesn't exist.
+          result = undefined;
+          break;
+        }
+
         result = result[path[i]];
       }
 
-      // For optional properties, we want to exclude undefined from the return type
-      // but still return undefined if the property doesn't exist
-      return result === undefined ? defaultValue : result;
+      // A missing value — `undefined` or `null`, at the leaf or on the way to
+      // it — resolves to the default, which is itself `undefined` when omitted.
+      return result == null ? defaultValue : result;
     }
 
     Object.assign(resultSelector, baseSelector, { path });

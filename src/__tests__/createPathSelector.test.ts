@@ -52,6 +52,59 @@ describe('createPathSelector', () => {
     expect(nameSelector({})).toBe('default');
   });
 
+  describe('default value', () => {
+    interface IState {
+      a: {
+        b: boolean | null;
+      };
+      c: {
+        d?: boolean;
+      } | null;
+      e?: boolean;
+      f: number;
+    }
+
+    const state: IState = {
+      a: { b: null },
+      c: null,
+      f: 1,
+    };
+
+    const path = createPathSelector((s: IState) => s);
+
+    test('returns undefined for a null leaf without default', () => {
+      expect(path.a.b()(state)).toBeUndefined();
+    });
+
+    test('returns default for a null leaf', () => {
+      expect(path.a.b(false)(state)).toBe(false);
+    });
+
+    test('returns undefined when an intermediate value is null', () => {
+      expect(path.c.d()(state)).toBeUndefined();
+    });
+
+    test('returns default when an intermediate value is null', () => {
+      expect(path.c.d(false)(state)).toBe(false);
+    });
+
+    test('returns default for an undefined leaf', () => {
+      expect(path.e(false)(state)).toBe(false);
+    });
+
+    test('returns default when the path runs through a primitive', () => {
+      const anyPath = path as any;
+
+      expect(anyPath.f.toFixed()(state)).toBeUndefined();
+      expect(anyPath.f.toFixed('x')(state)).toBe('x');
+    });
+
+    test('keeps falsy values that are not null or undefined', () => {
+      expect(path.f()({ ...state, f: 0 })).toBe(0);
+      expect(path.a.b(true)({ ...state, a: { b: false } })).toBe(false);
+    });
+  });
+
   test('should forward every argument the base selector declares', () => {
     const baseSelector = (state: State, props: { id: number }, offset: number) => ({
       messageId: (state.documents[props.id]?.messageId ?? 0) + offset,
