@@ -3,6 +3,16 @@ import { useRef } from 'react';
 import { unfreezeProps } from '../_helpers/unfreezeProps';
 import { selectorOptions } from './selectorOptions';
 
+/**
+ * Binds the props to a selector under the selector's own name, so that what
+ * react-redux reports about the selection names the selector, not the binding.
+ */
+const bindSelector = (selector: Function, props: unknown) => {
+  const boundSelector = (state: unknown) => selector(state, props);
+  Object.defineProperty(boundSelector, 'name', { value: selector.name });
+  return boundSelector;
+};
+
 type SelectorCache = {
   props: unknown;
   unfrozenProps: unknown;
@@ -49,7 +59,7 @@ export function useSelector(selector: Function, ...params: any[]) {
       props,
       unfrozenProps,
       selector,
-      boundSelector: (state: unknown) => selector(state, unfrozenProps),
+      boundSelector: bindSelector(selector, unfrozenProps),
     };
   } else {
     // A new-but-shallow-equal props object keeps the previous reference, so the
@@ -68,7 +78,7 @@ export function useSelector(selector: Function, ...params: any[]) {
       // react-redux memoizes the selection on the selector's identity, so a new
       // identity is what makes it recompute when the state has not changed but
       // the props or the selector have.
-      cache.boundSelector = (state: unknown) => selector(state, unfrozenProps);
+      cache.boundSelector = bindSelector(selector, unfrozenProps);
     }
   }
 

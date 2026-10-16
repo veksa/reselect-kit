@@ -1,8 +1,14 @@
 import { createElement, ReactNode } from 'react';
 import { describe, expect, test, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { Provider } from '@veksa/react-redux';
+import { Provider, useSelector as useReduxSelector } from '@veksa/react-redux';
 import { useSelector } from '../useSelector';
+
+// Spied on, to see the selector react-redux is handed.
+vi.mock('@veksa/react-redux', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@veksa/react-redux')>();
+  return { ...actual, useSelector: vi.fn(actual.useSelector) };
+});
 
 // `children` is passed positionally (oxlint forbids it as a prop), so relax the
 // Provider's prop type to make `children` optional in the props object.
@@ -152,5 +158,23 @@ describe('useSelector', () => {
 
     expect(Object.isFrozen(receivedProps)).toBe(false);
     expect(receivedProps?.factor).toBe(2);
+  });
+
+  test('hands react-redux a binding named after the selector', () => {
+    vi.mocked(useReduxSelector).mockClear();
+    const store = createMockStore(state);
+    function selectCount(s: State, props: { factor: number }) {
+      return s.count * props.factor;
+    }
+
+    const { rerender } = renderHook(({ props }) => useSelector(selectCount, props), {
+      wrapper: wrapperWith(store),
+      initialProps: { props: { factor: 2 } },
+    });
+    rerender({ props: { factor: 3 } });
+
+    const names = vi.mocked(useReduxSelector).mock.calls.map(([selector]) => selector.name);
+    expect(names.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(names)).toEqual(new Set(['selectCount']));
   });
 });
